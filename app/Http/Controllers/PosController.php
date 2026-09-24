@@ -41,6 +41,6 @@ class PosController extends Controller
         $cashId = PaymentMethod::where('code', 'CASH')->value('id');
         $serviceChargePct = (int) (Setting::value(Setting::KEY_SERVICE_CHARGE_PERCENT, 0) ?? 0);
 
-        return view('pos.index', compact('shift', 'categories', 'products', 'categoryId', 'paymentMethods', 'cashId', 'serviceChargePct'));
+        return view('pos.index', compact('shift', 'categories', 'products', 'categoryId', 'search', 'paymentMethods', 'cashId', 'serviceChargePct'));
     }
 }
