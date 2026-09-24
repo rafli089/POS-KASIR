@@ -62,6 +62,21 @@ class TransactionController extends Controller
         return view('transactions.show', compact('transaction', 'canVoid', 'canRefund'));
     }
 
+    public function reprint(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
+    {
+        $receipt = $transaction->receipt;
+
+        if ($receipt) {
+            $receipt->increment('print_count');
+            $receipt->update([
+                'printed_at' => now(),
+                'last_printed_by' => session('user_id'),
+            ]);
+        }
+
+        return redirect()->route('transactions.show', $transaction) . '?print=1';
+    }
+
     public function refund(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
     {
         if ($transaction->status !== Transaction::STATUS_COMPLETED) {

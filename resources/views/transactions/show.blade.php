@@ -4,9 +4,10 @@
 <div x-data="{ printing: false }" x-init="if (new URLSearchParams(window.location.search).has('print')) setTimeout(() => { printing = true; window.print(); }, 300)">
     <div class="no-print mb-4 flex flex-wrap gap-2">
         <a href="{{ url()->previous() }}" class="px-4 py-2 rounded-lg border border-line text-sm hover:border-primary transition">Kembali</a>
-        <button @click="window.print()" class="px-4 py-2 rounded-lg bg-primary text-surface text-sm font-medium hover:bg-black transition">Cetak Struk</button>
-        <button onclick="fetch('{{ route('transactions.store') }}')"
-                class="hidden">{{-- placeholder --}}</button>
+        <form method="POST" action="{{ route('transactions.reprint', $transaction) }}" class="inline">
+            @csrf
+            <button class="px-4 py-2 rounded-lg bg-primary text-surface text-sm font-medium hover:bg-black transition">Cetak Ulang Struk</button>
+        </form>
         <span class="ml-auto text-xs text-muted self-center">Struk dicetak {{ $transaction->receipt?->print_count ?? 0 }}×</span>
                 @if($canVoid ?? false)
                     <form method="POST" action="{{ route('transactions.void', $transaction) }}" id="void-form" class="inline">

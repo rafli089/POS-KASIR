@@ -40,7 +40,8 @@
                 </thead>
                 <tbody>
                     @foreach($transactions as $tx)
-                        <tr class="border-b border-line/50 last:border-0 hover:bg-background/50">
+                        <tr class="border-b border-line/50 last:border-0 hover:bg-background/50 cursor-pointer"
+                            onclick="window.location='{{ route('transactions.show', $tx) }}'">
                             <td class="px-5 py-2.5 font-medium">{{ $tx->transaction_number }}</td>
                             <td class="px-5 py-2.5 text-muted">{{ $tx->created_at->format('d M Y · H:i') }}</td>
                             <td class="px-5 py-2.5">{{ $tx->user->name }}</td>
