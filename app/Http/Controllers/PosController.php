@@ -20,13 +20,23 @@ class PosController extends Controller
 
         $categories = Category::where('status', 'ACTIVE')->orderBy('sort_order')->get();
         $categoryId = $request->input('category');
-        $query = Product::where('status', 'ACTIVE')->with('category:id,name');
+        $search = $request->input('q');
+
+        $query = Product::where('status', 'ACTIVE')
+            ->with(['category:id,name', 'modifierGroups.modifiers:id,modifier_group_id,name,price_modifier,display_order']);
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
         }
 
-        $products = $query->with(['modifierGroups.modifiers:id,modifier_group_id,name,price_modifier,display_order'])->orderBy('name')->get();
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        $products = $query->orderBy('name')->get();
         $paymentMethods = PaymentMethod::where('status', 'ACTIVE')->get();
         $cashId = PaymentMethod::where('code', 'CASH')->value('id');
         $serviceChargePct = (int) (Setting::value(Setting::KEY_SERVICE_CHARGE_PERCENT, 0) ?? 0);

@@ -18,7 +18,8 @@
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
                         <input type="text" x-model="searchQuery" placeholder="Cari produk...  /" x-ref="searchInput"
-                               class="w-full rounded-lg border border-line bg-white px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary pr-8">
+                               class="w-full rounded-lg border border-line bg-white px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary pr-8"
+                               @keydown.enter="searchQuery && window.location='?q=' + searchQuery">
                         <span x-show="searchQuery" @click="searchQuery=''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink cursor-pointer text-xs">✕</span>
                     </div>
                     <div class="flex items-center gap-1 bg-white border border-line rounded-xl p-1.5 overflow-x-auto text-sm">
@@ -199,7 +200,7 @@
 function pos() {
     return {
         products: @json($products),
-        searchQuery: '',
+        searchQuery: new URLSearchParams(window.location.search).get('q') || '',
         cart: [],
         showPayment: false,
         method: {{ $cashId ?? 0 }},
