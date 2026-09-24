@@ -25,6 +25,7 @@ Route::middleware('auth.pin')->group(function () {
 
     Route::middleware('auth.shift')->group(function () {
         Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
+        Route::post('/transactions/{transaction}/void', [TransactionController::class, 'void'])->name('transactions.void');
         Route::get('/shift/close', [ShiftController::class, 'close'])->name('shift.close');
         Route::post('/shift/close', [ShiftController::class, 'closeShift'])->name('shift.close.store');
         Route::get('/shift/activity', [ShiftController::class, 'activity'])->name('shift.activity');

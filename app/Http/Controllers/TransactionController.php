@@ -51,7 +51,47 @@ class TransactionController extends Controller
     {
         $transaction->load(['items.product', 'paymentMethod', 'shift', 'user', 'receipt']);
 
-        return view('transactions.show', compact('transaction'));
+        $shiftId = session('shift_id');
+        $canVoid = $transaction->status === Transaction::STATUS_COMPLETED
+            && $shiftId
+            && $transaction->shift_id === $shiftId;
+
+        return view('transactions.show', compact('transaction', 'canVoid'));
+    }
+
+    public function void(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
+    {
+        if ($transaction->status !== Transaction::STATUS_COMPLETED) {
+            return back()->withErrors(['void' => 'Transaksi ini tidak dapat dibatalkan.']);
+        }
+
+        $shiftId = session('shift_id');
+
+        if ($transaction->shift_id !== $shiftId) {
+            return back()->withErrors(['void' => 'Transaksi hanya dapat dibatalkan dalam shift yang sama.']);
+        }
+
+        $userId = session('user_id');
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $userId, $validated) {
+            $transaction->update(['status' => Transaction::STATUS_VOID]);
+
+            ShiftActivity::create([
+                'shift_id' => $transaction->shift_id,
+                'user_id' => $userId,
+                'activity_type' => ShiftActivity::TYPE_TRANSACTION_VOID,
+                'reference_type' => 'transaction',
+                'reference_id' => $transaction->id,
+                'description' => "Transaction #{$transaction->transaction_number} dibatalkan — {$validated['reason']}",
+            ]);
+        });
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Transaksi dibatalkan.');
     }
 
     public function store(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse

@@ -8,6 +8,16 @@
         <button onclick="fetch('{{ route('transactions.store') }}')"
                 class="hidden">{{-- placeholder --}}</button>
         <span class="ml-auto text-xs text-muted self-center">Struk dicetak {{ $transaction->receipt?->print_count ?? 0 }}×</span>
+                @if($canVoid ?? false)
+                    <form method="POST" action="{{ route('transactions.void', $transaction) }}" id="void-form" class="inline">
+                        @csrf
+                        <input type="hidden" name="reason" id="void-reason">
+                        <button type="button" onclick="const r = prompt('Alasan pembatalan (wajib):'); if (r) { document.getElementById('void-reason').value = r; document.getElementById('void-form').submit(); }"
+                                class="px-4 py-2 rounded-lg border border-error text-error text-sm hover:bg-error hover:text-surface transition">
+                            Batalkan Transaksi
+                        </button>
+                    </form>
+                @endif
     </div>
 
     <div class="grid lg:grid-cols-2 gap-4 no-print">
@@ -18,7 +28,7 @@
                 <div class="flex justify-between"><span class="text-muted">Kasir</span><span>{{ $transaction->user->name }}</span></div>
                 <div class="flex justify-between"><span class="text-muted">Shift</span><span>{{ $transaction->shift->shift_number }}</span></div>
                 <div class="flex justify-between"><span class="text-muted">Metode</span><span>{{ $transaction->paymentMethod->name }}</span></div>
-                <div class="flex justify-between"><span class="text-muted">Status</span><span class="text-success font-medium">{{ $transaction->status }}</span></div>
+                <div class="flex justify-between"><span class="text-muted">Status</span><span class="font-medium {{ $transaction->status === 'VOID' ? 'text-error' : 'text-success' }}">{{ $transaction->status }}</span></div>
             </div>
 
             <table class="w-full text-sm">

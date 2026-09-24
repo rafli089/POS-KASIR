@@ -46,7 +46,7 @@
                             <td class="px-5 py-2.5">{{ $tx->user->name }}</td>
                             <td class="px-5 py-2.5">{{ $tx->paymentMethod->name }}</td>
                             <td class="px-5 py-2.5 text-right font-medium">Rp{{ number_format($tx->grand_total, 0, ',', '.') }}</td>
-                            <td class="px-5 py-2.5"><span class="px-2 py-0.5 rounded-md text-xs bg-success/10 text-success font-medium">{{ $tx->status }}</span></td>
+                            <td class="px-5 py-2.5"><span class="px-2 py-0.5 rounded-md text-xs font-medium {{ $tx->status === 'COMPLETED' ? 'bg-success/10 text-success' : 'bg-error/10 text-error' }}">{{ $tx->status }}</span></td>
                             <td class="px-5 py-2.5 text-right">
                                 <a href="{{ route('transactions.show', $tx) }}" class="text-primary text-xs hover:underline font-medium">Detail</a>
                             </td>
