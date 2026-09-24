@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.pin' => \App\Http\Middleware\EnsurePinAuthenticated::class,
             'auth.shift' => \App\Http\Middleware\EnsureActiveShift::class,
             'role.admin' => \App\Http\Middleware\EnsureAdminOrManager::class,
+            'role.admin_only' => \App\Http\Middleware\EnsureAdminOnly::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

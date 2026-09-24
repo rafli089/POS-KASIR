@@ -23,6 +23,10 @@
                     <a href="{{ route('reports.daily') }}"
                        class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'reports.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Laporan</a>
                 @endif
+                @if(session('user_role') === 'ADMIN')
+                    <a href="{{ route('users.index') }}"
+                       class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'users.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Pengguna</a>
+                @endif
             </nav>
 
             <div class="ml-auto flex items-center gap-3 text-sm">

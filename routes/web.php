@@ -8,6 +8,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -49,5 +50,9 @@ Route::middleware('auth.pin')->group(function () {
 
         Route::get('/reports/products', [ReportController::class, 'products'])->name('reports.products');
         Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
+
+        Route::middleware('role.admin_only')->group(function () {
+            Route::resource('users', UserController::class)->except(['show']);
+        });
     });
 });
