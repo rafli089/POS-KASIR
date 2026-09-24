@@ -29,6 +29,21 @@
 
     <div class="grid lg:grid-cols-3 gap-4">
         <div class="lg:col-span-2 bg-white border border-line rounded-xl p-5">
+            <h2 class="font-semibold mb-4">Penjualan 7 Hari Terakhir</h2>
+            <div class="h-56"><canvas id="dailyChart"></canvas></div>
+        </div>
+        <div class="bg-white border border-line rounded-xl p-5">
+            <h2 class="font-semibold mb-4">Top Produk · Bulan Ini</h2>
+            @if($topProducts->isNotEmpty())
+                <div class="h-56"><canvas id="topProductsChart"></canvas></div>
+            @else
+                <div class="text-sm text-muted text-center py-10">Belum ada penjualan bulan ini.</div>
+            @endif
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white border border-line rounded-xl p-5">
             <h2 class="font-semibold mb-4">Metode Pembayaran</h2>
             <div class="space-y-3">
                 @foreach(['CASH' => 'Tunai', 'QRIS' => 'QRIS', 'DEBIT' => 'Debit', 'CREDIT' => 'Kartu Kredit'] as $code => $label)
@@ -62,4 +77,41 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const dailyEl = document.getElementById('dailyChart');
+    if (dailyEl) {
+        new Chart(dailyEl, {
+            type: 'line',
+            data: {
+                labels: @json($labels),
+                datasets: [{ label: 'Rupiah', data: @json($values), borderColor: '#5F7D68', backgroundColor: 'rgba(95,125,104,.15)', fill: true, tension: .3 }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { ticks: { callback: v => 'Rp' + new Intl.NumberFormat('id-ID').format(v) } } },
+            },
+        });
+    }
+    const topEl = document.getElementById('topProductsChart');
+    if (topEl) {
+        new Chart(topEl, {
+            type: 'bar',
+            data: {
+                labels: @json($topProducts->pluck('name')),
+                datasets: [{ label: 'Terjual', data: @json($topProducts->pluck('qty')), backgroundColor: ['#5F7D68', '#7D8F69', '#A3B18A', '#C5C0A6', '#D6D3C8'] }],
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+            },
+        });
+    }
+});
+</script>
 @endsection
