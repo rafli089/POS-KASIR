@@ -1,14 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="{ printing: false }" x-init="if (new URLSearchParams(window.location.search).has('print')) setTimeout(() => { printing = true; window.print(); }, 300)">
+<div x-data="{ printing: false, reprintDialog: false }" x-init="if (new URLSearchParams(window.location.search).has('print')) setTimeout(() => { printing = true; window.print(); }, 300)">
     <div class="no-print mb-4 flex flex-wrap gap-2">
         <a href="{{ url()->previous() }}" class="px-4 py-2 rounded-lg border border-line text-sm hover:border-primary transition">Kembali</a>
-        <form method="POST" action="{{ route('transactions.reprint', $transaction) }}" class="inline"
-              onsubmit="return confirm('Cetak ulang struk untuk {{ $transaction->transaction_number }}?\n(Sudah dicetak {{ $transaction->receipt?->print_count ?? 0 }}×)')">
-            @csrf
-            <button class="px-4 py-2 rounded-lg bg-primary text-surface text-sm font-medium hover:bg-black transition">Cetak Ulang Struk</button>
-        </form>
+        <button @click="reprintDialog = true" class="px-4 py-2 rounded-lg bg-primary text-surface text-sm font-medium hover:bg-black transition">Cetak Ulang Struk</button>
         <span class="ml-auto text-xs text-muted self-center">Struk dicetak {{ $transaction->receipt?->print_count ?? 0 }}×</span>
                 @if($canVoid ?? false)
                     <form method="POST" action="{{ route('transactions.void', $transaction) }}" id="void-form" class="inline">
@@ -136,6 +132,29 @@
         @endif
         <div class="text-center mt-3 border-t border-black pt-1.5">Terima kasih!</div>
         <div class="text-center">Sampai jumpa kembali ☕</div>
+    </div>
+
+    {{-- Reprint confirmation modal --}}
+    <div x-show="reprintDialog" x-cloak x-transition
+         class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4"
+         @keydown.escape.window="reprintDialog=false">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl" @click.outside="reprintDialog=false">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 grid place-items-center text-lg">🖨️</div>
+                <h3 class="font-semibold">Cetak Ulang Struk?</h3>
+            </div>
+            <p class="text-sm text-muted mb-4">
+                Struk untuk <span class="font-medium text-ink">{{ $transaction->transaction_number }}</span>
+                akan dicetak lagi (sudah dicetak <span class="font-medium">{{ $transaction->receipt?->print_count ?? 0 }}×</span>).
+            </p>
+            <div class="flex gap-2">
+                <button @click="reprintDialog=false" class="flex-1 py-2.5 rounded-lg border border-line text-sm">Batal</button>
+                <form method="POST" action="{{ route('transactions.reprint', $transaction) }}" class="flex-1">
+                    @csrf
+                    <button class="w-full py-2.5 rounded-lg bg-primary text-surface text-sm font-medium hover:bg-black transition">Ya, Cetak</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
