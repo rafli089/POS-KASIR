@@ -79,7 +79,16 @@
                         @if($serviceChargePct > 0)
                             <div class="flex justify-between text-sm text-muted"><span>Layanan ({{ $serviceChargePct }}%)</span><span x-text="fmt(serviceCharge)"></span></div>
                         @endif
-                        <div class="flex justify-between text-sm text-muted"><span>Pajak (0%)</span><span x-text="fmt(0)"></span></div>
+                        <div class="flex items-center justify-between gap-2 text-sm">
+                            <span class="text-muted">Diskon</span>
+                            <input type="number" min="0" x-model.number="discount" placeholder="0"
+                                   class="w-24 text-right rounded-md border border-line px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                        </div>
+                        <div class="flex items-center justify-between gap-2 text-sm">
+                            <span class="text-muted">Pajak</span>
+                            <input type="number" min="0" x-model.number="tax" placeholder="0"
+                                   class="w-24 text-right rounded-md border border-line px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                        </div>
                         <div class="flex justify-between text-base font-semibold pt-1 border-t border-line/60 mt-1">
                             <span>Total</span><span x-text="fmt(total)"></span>
                         </div>
@@ -147,6 +156,8 @@ function pos() {
         method: {{ $cashId ?? 0 }},
         cash: 0,
         paying: false,
+        discount: 0,
+        tax: 0,
 
         init() {
             if (this.products.length === 0) return;
@@ -180,7 +191,7 @@ function pos() {
             return Math.round(this.subtotal * {{ (int) $serviceChargePct }} / 100);
         },
 
-        get total() { return this.subtotal + this.serviceCharge; },
+        get total() { return Math.max(0, this.subtotal - this.discount + this.tax + this.serviceCharge); },
 
         async pay() {
             if (this.paying) return;
@@ -190,8 +201,8 @@ function pos() {
                     items: this.cart.map(i => ({ product_id: i.id, quantity: i.qty, notes: i.notes || null })),
                     payment_method_id: this.method,
                     payment_amount: this.method === {{ $cashId ?? 0 }} ? this.cash : this.total,
-                    discount: 0,
-                    tax: 0,
+                    discount: this.discount,
+                    tax: this.tax,
                 }, { headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } });
                 window.location.href = '/transactions/' + res.data.transaction.id + '?print=1';
             } catch (e) {
