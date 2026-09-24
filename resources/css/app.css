@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source "../**/*.blade.php";
+@source "../**/*.js";
+@source "../**/*.vue";
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+    --color-background: #F5F5F3;
+    --color-surface: #FFFFFF;
+    --color-ink: #1F1F1F;
+    --color-muted: #6B6B6B;
+    --color-line: #E5E5E5;
+    --color-primary: #2F2F2F;
+    --color-success: #5F7D68;
+    --color-warning: #A88952;
+    --color-error: #A65D5D;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #receipt, #receipt * {
+        visibility: visible;
+    }
+    #receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
