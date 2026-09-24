@@ -55,4 +55,47 @@ class ReportTest extends TestCase
         $this->post('/login', ['user_id' => $this->admin->id, 'pin' => '123456']);
         $this->get(route('reports.products'))->assertOk()->assertSee('54.000');
     }
+
+    public function test_export_daily_csv(): void
+    {
+        $this->post('/login', ['user_id' => $this->admin->id, 'pin' => '123456']);
+
+        $response = $this->get(route('reports.export', ['type' => 'daily']));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $response->assertDownload('report-daily-'.date('Y-m-01').'-'.date('Y-m-d').'.csv');
+        $this->assertStringContainsString('Tanggal,Transaksi,Pendapatan', $response->streamedContent());
+        $this->assertStringContainsString('54', $response->streamedContent());
+    }
+
+    public function test_export_products_csv(): void
+    {
+        $this->post('/login', ['user_id' => $this->admin->id, 'pin' => '123456']);
+
+        $response = $this->get(route('reports.export', ['type' => 'products']));
+
+        $response->assertOk();
+        $this->assertStringContainsString('Produk,Terjual,Pendapatan', $response->streamedContent());
+        $this->assertStringContainsString('Espresso', $response->streamedContent());
+    }
+
+    public function test_print_daily_report(): void
+    {
+        $this->post('/login', ['user_id' => $this->admin->id, 'pin' => '123456']);
+
+        $this->get(route('reports.print', ['type' => 'daily']))
+            ->assertOk()
+            ->assertSee('Laporan Harian');
+    }
+
+    public function test_print_product_report(): void
+    {
+        $this->post('/login', ['user_id' => $this->admin->id, 'pin' => '123456']);
+
+        $this->get(route('reports.print', ['type' => 'products']))
+            ->assertOk()
+            ->assertSee('Laporan Penjualan Produk')
+            ->assertSee('Espresso');
+    }
 }

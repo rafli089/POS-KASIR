@@ -4,7 +4,13 @@
 <div class="space-y-4">
     <div class="flex items-center justify-between">
         <h1 class="text-xl font-semibold">Laporan Harian</h1>
-        <span class="text-sm text-muted">Rp{{ number_format($totalRevenue, 0, ',', '.') }} total</span>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-muted">Rp{{ number_format($totalRevenue, 0, ',', '.') }} total</span>
+            <a href="{{ route('reports.export', ['type' => 'daily', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+               class="px-4 py-2 rounded-lg border border-line text-sm font-medium hover:bg-background transition">⬇ Excel</a>
+            <a href="{{ route('reports.print', ['type' => 'daily', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+               target="_blank" class="px-4 py-2 rounded-lg border border-line text-sm font-medium hover:bg-background transition">🖨 PDF</a>
+        </div>
     </div>
 
     <form method="GET" class="bg-white border border-line rounded-xl p-4 flex flex-wrap gap-3 items-end">

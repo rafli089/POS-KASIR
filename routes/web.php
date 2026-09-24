@@ -50,6 +50,8 @@ Route::middleware('auth.pin')->group(function () {
 
         Route::get('/reports/products', [ReportController::class, 'products'])->name('reports.products');
         Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
+        Route::get('/reports/export', [ReportController::class, 'exportCsv'])->name('reports.export');
+        Route::get('/reports/print', [ReportController::class, 'print'])->name('reports.print');
 
         Route::middleware('role.admin_only')->group(function () {
             Route::resource('users', UserController::class)->except(['show']);
