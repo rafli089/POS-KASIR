@@ -11,7 +11,7 @@ class TransactionItem extends Model
 
     protected $fillable = [
         'transaction_id', 'product_id', 'product_name',
-        'quantity', 'unit_price', 'discount', 'notes', 'subtotal',
+        'quantity', 'unit_price', 'discount', 'notes', 'modifiers', 'subtotal',
     ];
 
     protected $casts = [
@@ -19,6 +19,7 @@ class TransactionItem extends Model
         'unit_price' => 'integer',
         'discount' => 'integer',
         'subtotal' => 'integer',
+        'modifiers' => 'array',
     ];
 
     public function transaction(): \Illuminate\Database\Eloquent\Relations\BelongsTo

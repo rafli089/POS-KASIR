@@ -56,6 +56,11 @@
                             <td class="py-2">
                                 <div>{{ $item->product_name }}</div>
                                 <div class="text-xs text-muted">{{ number_format($item->unit_price, 0, ',', '.') }}</div>
+                                @if($item->modifiers)
+                                    <div class="text-xs text-muted italic">
+                                        {{ collect($item->modifiers)->map(fn ($m) => $m['group'].': '.$m['name'])->implode(' · ') }}
+                                    </div>
+                                @endif
                                 @if($item->notes)
                                     <div class="text-xs text-warning italic">📝 {{ $item->notes }}</div>
                                 @endif
@@ -107,6 +112,9 @@
                 <span>{{ $item->product_name }}</span>
                 <span>{{ $item->quantity }}×</span>
             </div>
+            @if($item->modifiers)
+                <div class="text-xs" style="margin-left:8px">{{ collect($item->modifiers)->map(fn ($m) => $m['group'].': '.$m['name'])->implode(', ') }}</div>
+            @endif
             @if($item->notes)
                 <div class="text-xs text-right" style="margin-left:8px">📝 {{ $item->notes }}</div>
             @endif

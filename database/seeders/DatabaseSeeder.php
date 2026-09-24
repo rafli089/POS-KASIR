@@ -91,5 +91,7 @@ class DatabaseSeeder extends Seeder
         foreach ($paymentMethods as $pm) {
             PaymentMethod::create($pm);
         }
+
+        $this->call(ModifierSeeder::class);
     }
 }

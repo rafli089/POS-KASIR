@@ -148,6 +148,10 @@ class TransactionController extends Controller
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
+            'items.*.modifiers' => ['nullable', 'array'],
+            'items.*.modifiers.*.group' => ['required', 'string', 'max:100'],
+            'items.*.modifiers.*.name' => ['required', 'string', 'max:100'],
+            'items.*.modifiers.*.price_modifier' => ['required', 'integer', 'min:0'],
             'discount' => ['nullable', 'integer', 'min:0'],
             'tax' => ['nullable', 'integer', 'min:0'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
@@ -183,7 +187,8 @@ class TransactionController extends Controller
             $subtotal = 0;
             foreach ($validated['items'] as $row) {
                 $product = $items[$row['product_id']];
-                $subtotal += $product->price * $row['quantity'];
+                $modTotal = collect($row['modifiers'] ?? [])->sum('price_modifier');
+                $subtotal += ($product->price + $modTotal) * $row['quantity'];
             }
 
             $discount = $validated['discount'] ?? 0;
@@ -220,15 +225,18 @@ class TransactionController extends Controller
                 if ($product->stock !== null) {
                     $product->decrement('stock', $row['quantity']);
                 }
+                $mods = $row['modifiers'] ?? [];
+                $unitPrice = $product->price + collect($mods)->sum('price_modifier');
                 TransactionItem::create([
                     'transaction_id' => $transaction->id,
                     'product_id' => $product->id,
                     'product_name' => $product->name,
                     'quantity' => $row['quantity'],
-                    'unit_price' => $product->price,
+                    'unit_price' => $unitPrice,
                     'discount' => 0,
                     'notes' => $row['notes'] ?? null,
-                    'subtotal' => $product->price * $row['quantity'],
+                    'modifiers' => $mods ?: null,
+                    'subtotal' => $unitPrice * $row['quantity'],
                 ]);
             }
 

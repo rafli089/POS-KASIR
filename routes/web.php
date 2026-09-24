@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\PinLoginController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ModifierController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
@@ -54,6 +55,9 @@ Route::middleware('auth.pin')->group(function () {
         Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
         Route::get('/reports/export', [ReportController::class, 'exportCsv'])->name('reports.export');
         Route::get('/reports/print', [ReportController::class, 'print'])->name('reports.print');
+
+        Route::get('/modifiers', [ModifierController::class, 'index'])->name('modifiers.index');
+        Route::post('/modifiers', [ModifierController::class, 'update'])->name('modifiers.update');
 
         Route::middleware('role.admin_only')->group(function () {
             Route::resource('users', UserController::class)->except(['show']);

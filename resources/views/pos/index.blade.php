@@ -63,11 +63,12 @@
                     </div>
 
                     <div class="flex-1 overflow-y-auto px-2 py-1" style="max-height: 40vh">
-                        <template x-for="(item, idx) in cart" :key="item.id">
+                        <template x-for="(item, idx) in cart" :key="item.key">
                             <div class="flex items-start gap-2 px-2 py-2.5 border-b border-line/60">
                                 <div class="flex-1 min-w-0">
                                     <div class="text-sm font-medium truncate" x-text="item.name"></div>
-                                    <div class="text-xs text-muted" x-text="fmt(item.price) + ' × ' + item.qty + ' = ' + fmt(item.price * item.qty)"></div>
+                                    <div class="text-xs text-muted" x-text="fmt(item.unit) + ' × ' + item.qty + ' = ' + fmt(item.unit * item.qty)"></div>
+                                    <div class="text-[11px] text-muted truncate" x-text="item.modifiers.map(m => m.name).join(', ')"></div>
                                     <input type="text" x-model="item.notes" placeholder="Catatan..." maxlength="255"
                                            class="text-xs text-muted bg-background rounded px-1.5 py-0.5 mt-1 w-full focus:outline-none focus:ring-1 focus:ring-primary">
                                 </div>
@@ -159,6 +160,37 @@
             </div>
         </div>
     </div>
+
+    {{-- Modifier modal --}}
+    <div x-show="showModifier" x-cloak
+         class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4"
+         @keydown.escape.window="showModifier=false">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl" @click.outside="showModifier=false">
+            <h3 class="font-semibold" x-text="modProduct?.name"></h3>
+            <p class="text-xs text-muted mb-4">Pilih pengaturan tambahan untuk produk ini.</p>
+
+            <template x-for="g in (modProduct?.modifierGroups || [])" :key="g.id">
+                <div class="mb-4">
+                    <div class="text-sm font-medium mb-2" x-text="g.name + (g.required ? ' *' : '')"></div>
+                    <div class="space-y-1.5">
+                        <template x-for="m in g.modifiers" :key="m.id">
+                            <label class="flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer text-sm transition"
+                                   :class="modSelected[g.id] === m.id ? 'border-primary bg-primary/5' : 'border-line hover:border-primary'">
+                                <input type="radio" :name="'mod-'+g.id" :value="m.id" x-model="modSelected[g.id]" class="accent-primary">
+                                <span class="flex-1" x-text="m.name"></span>
+                                <span class="text-muted" x-text="m.price_modifier ? '+' + fmt(m.price_modifier) : ''"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <div class="flex gap-2">
+                <button @click="showModifier=false" class="flex-1 py-2.5 rounded-lg border border-line text-sm">Batal</button>
+                <button @click="confirmModifier()" class="flex-1 py-2.5 rounded-lg bg-primary text-surface text-sm font-medium">Pilih</button>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -175,6 +207,9 @@ function pos() {
         paying: false,
         discount: 0,
         tax: 0,
+        showModifier: false,
+        modProduct: null,
+        modSelected: {},
 
         init() {
             window.addEventListener('keydown', (e) => {
@@ -204,9 +239,39 @@ function pos() {
             const p = this.products.find(x => x.id === id);
             if (!p) return;
             if (p.stock === 0) return;
-            const idx = this.cart.findIndex(x => x.id === id);
-            if (idx >= 0) this.cart[idx].qty++;
-            else this.cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, notes: '' });
+            const groups = p.modifierGroups || [];
+            if (groups.length) {
+                this.modProduct = p;
+                this.modSelected = {};
+                groups.forEach(g => { this.modSelected[g.id] = g.modifiers?.[0]?.id ?? null; });
+                this.showModifier = true;
+                return;
+            }
+            this.pushItem(p, []);
+        },
+
+        pushItem(p, modifiers) {
+            const key = p.id + '|' + modifiers.map(m => m.id).join(',');
+            const idx = this.cart.findIndex(x => x.key === key);
+            if (idx >= 0) { this.cart[idx].qty++; return; }
+            this.cart.push({ key, id: p.id, name: p.name, price: p.price, unit: p.price, qty: 1, notes: '', modifiers });
+        },
+
+        confirmModifier() {
+            const p = this.modProduct;
+            if (!p) return;
+            const modifiers = [];
+            let extra = 0;
+            (p.modifierGroups || []).forEach(g => {
+                const m = (g.modifiers || []).find(x => x.id === this.modSelected[g.id]);
+                if (m) { modifiers.push({ id: m.id, group: g.name, name: m.name, price_modifier: m.price_modifier }); extra += m.price_modifier; }
+            });
+            const key = p.id + '|' + modifiers.map(m => m.id).join(',');
+            const idx = this.cart.findIndex(x => x.key === key);
+            if (idx >= 0) { this.cart[idx].qty++; } else {
+                this.cart.push({ id: p.id, name: p.name, price: p.price, unit: p.price + extra, qty: 1, notes: '', modifiers });
+            }
+            this.showModifier = false;
         },
 
         changeQty(idx, d) {
@@ -223,7 +288,7 @@ function pos() {
         fmt(n) { return new Intl.NumberFormat('id-ID').format(n); },
 
         get subtotal() {
-            return this.cart.reduce((s, i) => s + i.price * i.qty, 0);
+            return this.cart.reduce((s, i) => s + i.unit * i.qty, 0);
         },
 
         get serviceCharge() {
@@ -237,7 +302,7 @@ function pos() {
             this.paying = true;
             try {
                 const res = await axios.post('/transactions', {
-                    items: this.cart.map(i => ({ product_id: i.id, quantity: i.qty, notes: i.notes || null })),
+                    items: this.cart.map(i => ({ product_id: i.id, quantity: i.qty, notes: i.notes || null, modifiers: i.modifiers.length ? i.modifiers : null })),
                     payment_method_id: this.method,
                     payment_amount: this.method === {{ $cashId ?? 0 }} ? this.cash : this.total,
                     discount: this.discount,
