@@ -256,7 +256,8 @@ class ShiftController extends Controller
         $cashSales = (int) ($byMethod['CASH'] ?? 0);
         $cashIn = (int) ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_IN)->sum('reference_amount');
         $cashOut = (int) ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_OUT)->sum('reference_amount');
-        $expectedCash = $shift->opening_cash + $cashSales + $cashIn - $cashOut;
+        $cashRefunded = (int) ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_TRANSACTION_REFUND)->sum('reference_amount');
+        $expectedCash = $shift->opening_cash + $cashSales + $cashIn - $cashOut - $cashRefunded;
 
         return [
             'total_transactions' => $totalTransactions,

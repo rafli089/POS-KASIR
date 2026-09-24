@@ -18,6 +18,17 @@
                         </button>
                     </form>
                 @endif
+                @if($canRefund ?? false)
+                    <form method="POST" action="{{ route('transactions.refund', $transaction) }}" id="refund-form" class="inline">
+                        @csrf
+                        <input type="hidden" name="amount" id="refund-amount">
+                        <input type="hidden" name="reason" id="refund-reason">
+                        <button type="button" onclick="const amt = prompt('Nominal refund (maks Rp{{ $transaction->grand_total }}):'); const rn = prompt('Alasan refund (wajib):'); if (amt && rn) { document.getElementById('refund-amount').value = amt; document.getElementById('refund-reason').value = rn; document.getElementById('refund-form').submit(); }"
+                                class="px-4 py-2 rounded-lg border border-warning text-warning text-sm hover:bg-warning hover:text-surface transition">
+                            Refund
+                        </button>
+                    </form>
+                @endif
     </div>
 
     <div class="grid lg:grid-cols-2 gap-4 no-print">
@@ -28,7 +39,7 @@
                 <div class="flex justify-between"><span class="text-muted">Kasir</span><span>{{ $transaction->user->name }}</span></div>
                 <div class="flex justify-between"><span class="text-muted">Shift</span><span>{{ $transaction->shift->shift_number }}</span></div>
                 <div class="flex justify-between"><span class="text-muted">Metode</span><span>{{ $transaction->paymentMethod->name }}</span></div>
-                <div class="flex justify-between"><span class="text-muted">Status</span><span class="font-medium {{ $transaction->status === 'VOID' ? 'text-error' : 'text-success' }}">{{ $transaction->status }}</span></div>
+                <div class="flex justify-between"><span class="text-muted">Status</span><span class="font-medium {{ $transaction->status === 'COMPLETED' ? 'text-success' : ($transaction->status === 'REFUNDED' ? 'text-warning' : 'text-error') }}">{{ $transaction->status }}</span></div>
             </div>
 
             <table class="w-full text-sm">

@@ -56,7 +56,46 @@ class TransactionController extends Controller
             && $shiftId
             && $transaction->shift_id === $shiftId;
 
-        return view('transactions.show', compact('transaction', 'canVoid'));
+        $canRefund = $canVoid && session('user_role') !== 'CASHIER';
+
+        return view('transactions.show', compact('transaction', 'canVoid', 'canRefund'));
+    }
+
+    public function refund(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
+    {
+        if ($transaction->status !== Transaction::STATUS_COMPLETED) {
+            return back()->withErrors(['refund' => 'Transaksi ini sudah direfund atau dibatalkan.']);
+        }
+
+        if ($transaction->shift_id !== session('shift_id')) {
+            return back()->withErrors(['refund' => 'Refund hanya dapat dilakukan dalam shift yang sama.']);
+        }
+
+        if (session('user_role') === 'CASHIER') {
+            return back()->withErrors(['refund' => 'Refund hanya bisa dilakukan oleh MANAGER atau ADMIN.']);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'integer', 'min:1', 'max:' . $transaction->grand_total],
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $validated) {
+            $transaction->update(['status' => Transaction::STATUS_REFUNDED]);
+
+            ShiftActivity::create([
+                'shift_id' => $transaction->shift_id,
+                'user_id' => session('user_id'),
+                'activity_type' => ShiftActivity::TYPE_TRANSACTION_REFUND,
+                'reference_type' => 'transaction',
+                'reference_id' => $transaction->id,
+                'reference_amount' => $validated['amount'],
+                'description' => "Refund #{$transaction->transaction_number} — {$validated['reason']}",
+            ]);
+        });
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Transaksi direfund. Status menjadi REFUNDED.');
     }
 
     public function void(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
