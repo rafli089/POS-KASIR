@@ -45,7 +45,7 @@ class DatabaseSeeder extends Seeder
 
         $categoryIds = [];
         foreach ($categories as $cat) {
-            $categoryIds[] = Category::create($cat)->id;
+            Category::firstOrCreate(['name' => $cat['name']], ['sort_order' => $cat['sort_order']]);
         }
 
         $products = [
@@ -64,15 +64,9 @@ class DatabaseSeeder extends Seeder
             ['Camilan', 'PISANG_KEJU', 'Pisang Goreng Keju', 12000, 5000],
         ];
 
-        // Map category name → id
-        $catIdByName = [];
-        foreach ($categories as $cat) {
-            $catIdByName[$cat['name']] = Category::where('name', $cat['name'])->first()->id;
-        }
-
         foreach ($products as $p) {
             Product::create([
-                'category_id' => $catIdByName[$p[0]],
+                'category_id' => Category::where('name', $p[0])->first()->id,
                 'name' => $p[2],
                 'sku' => $p[1],
                 'price' => $p[3],
@@ -89,7 +83,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($paymentMethods as $pm) {
-            PaymentMethod::create($pm);
+            PaymentMethod::firstOrCreate(['code' => $pm['code']], ['name' => $pm['name']]);
         }
 
         $this->call(ModifierSeeder::class);

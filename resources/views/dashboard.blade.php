@@ -22,7 +22,13 @@
         </div>
         <div class="bg-white border border-line rounded-xl p-4">
             <div class="text-xs text-muted">Shift</div>
-            <div class="text-sm font-bold mt-1">{{ $shift ? '<span class="text-success">● Aktif</span>' : '<span class="text-muted">—</span>' }}</div>
+            <div class="text-sm font-bold mt-1">
+                @if($shift)
+                    <span class="text-success">● Aktif</span>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </div>
             <div class="text-xs text-muted mt-0.5">{{ $shift ? $shift->shift_number : '—' }}</div>
         </div>
     </div>

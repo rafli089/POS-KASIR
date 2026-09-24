@@ -18,7 +18,7 @@ class PosController extends Controller
         $userId = session('user_id');
         $shift = Shift::currentForUser($userId);
 
-        $categories = Category::where('status', 'ACTIVE')->orderBy('sort_order')->get();
+        $categories = Category::withCount('products')->where('status', 'ACTIVE')->orderBy('sort_order')->get();
         $categoryId = $request->input('category');
         $search = $request->input('q');
 

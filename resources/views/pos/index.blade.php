@@ -22,35 +22,44 @@
                                @keydown.enter="searchQuery && window.location='?q=' + searchQuery">
                         <span x-show="searchQuery" @click="searchQuery=''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink cursor-pointer text-xs">✕</span>
                     </div>
-                    <div class="flex items-center gap-1 bg-white border border-line rounded-xl p-1.5 overflow-x-auto text-sm">
-                        <a href="{{ route('pos.index') }}"
-                           class="shrink-0 px-3.5 py-1.5 rounded-lg transition {{ !$categoryId ? 'bg-primary text-surface' : 'text-muted hover:text-ink' }}">Semua</a>
-                        @foreach($categories as $category)
-                            <a href="{{ route('pos.index', ['category' => $category->id]) }}"
-                               class="shrink-0 px-3.5 py-1.5 rounded-lg transition {{ $categoryId == $category->id ? 'bg-primary text-surface' : 'text-muted hover:text-ink' }}">{{ $category->name }}</a>
-                        @endforeach
-                    </div>
+                    @if($categoryId && !$search)
+                        <a href="{{ route('pos.index') }}" class="shrink-0 px-3.5 py-2 rounded-lg border border-line text-sm text-muted hover:border-primary hover:text-ink transition">← Kategori</a>
+                    @endif
                 </div>
 
-                @if($products->isEmpty())
-                    <div class="bg-white border border-line rounded-xl py-16 text-center text-sm text-muted">Tidak ada produk pada kategori ini.</div>
-                @else
+                @if(!$categoryId && !$search)
+                    {{-- Pilih kategori dulu --}}
                     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                        <template x-for="p in filteredProducts" :key="p.id">
-                            <button @click="add(p.id)"
-                                    :class="p.stock === 0 ? 'opacity-45 cursor-not-allowed' : 'hover:border-primary hover:shadow-sm active:scale-[.98]'"
-                                    class="text-left bg-white border border-line rounded-xl p-4 transition">
-                                <div class="w-full aspect-square rounded-lg bg-background grid place-items-center mb-3 text-2xl">☕</div>
-                                <div class="text-sm font-medium leading-snug" x-text="p.name"></div>
-                                <div class="text-sm font-semibold mt-1" x-text="fmt(p.price)"></div>
-                                <div class="text-xs mt-0.5" :class="p.stock === 0 ? 'text-error' : 'text-muted'"
-                                     x-text="p.stock === null ? '' : (p.stock === 0 ? 'Stok habis' : 'Stok: ' + fmt(p.stock))"></div>
-                            </button>
-                        </template>
-                        <div x-show="!filteredProducts.length && searchQuery" class="col-span-full text-center py-10 text-sm text-muted">
-                            Produk "<span x-text="searchQuery"></span>" tidak ditemukan.
-                        </div>
+                        @foreach($categories as $category)
+                            <a href="{{ route('pos.index', ['category' => $category->id]) }}"
+                               class="text-left bg-white border border-line rounded-xl p-4 hover:border-primary hover:shadow-sm transition">
+                                <div class="text-base font-semibold">{{ $category->name }}</div>
+                                <div class="text-xs text-muted mt-1">{{ $category->products_count }} produk</div>
+                            </a>
+                        @endforeach
                     </div>
+                @endif
+
+                @if($categoryId || $search)
+                    @if($products->isEmpty())
+                        <div class="bg-white border border-line rounded-xl py-16 text-center text-sm text-muted">Tidak ada produk yang cocok.</div>
+                    @else
+                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                            <template x-for="p in filteredProducts" :key="p.id">
+                                <button @click="add(p.id)"
+                                        :class="p.stock === 0 ? 'opacity-45 cursor-not-allowed' : 'hover:border-primary hover:shadow-sm active:scale-[.98]'"
+                                        class="text-left bg-white border border-line rounded-xl p-4 transition">
+                                    <div class="text-sm font-medium leading-snug" x-text="p.name"></div>
+                                    <div class="text-sm font-semibold mt-1" x-text="fmt(p.price)"></div>
+                                    <div class="text-xs mt-0.5" :class="p.stock === 0 ? 'text-error' : 'text-muted'"
+                                         x-text="p.stock === null ? '' : (p.stock === 0 ? 'Stok habis' : 'Stok: ' + fmt(p.stock))"></div>
+                                </button>
+                            </template>
+                            <div x-show="!filteredProducts.length && searchQuery" class="col-span-full text-center py-10 text-sm text-muted">
+                                Produk "<span x-text="searchQuery"></span>" tidak ditemukan.
+                            </div>
+                        </div>
+                    @endif
                 @endif
             </div>
 
