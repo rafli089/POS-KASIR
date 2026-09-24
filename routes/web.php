@@ -30,6 +30,8 @@ Route::middleware('auth.pin')->group(function () {
         Route::get('/shift/close', [ShiftController::class, 'close'])->name('shift.close');
         Route::post('/shift/close', [ShiftController::class, 'closeShift'])->name('shift.close.store');
         Route::get('/shift/activity', [ShiftController::class, 'activity'])->name('shift.activity');
+        Route::post('/shift/cash-in', [ShiftController::class, 'cashIn'])->name('shift.cash-in');
+        Route::post('/shift/cash-out', [ShiftController::class, 'cashOut'])->name('shift.cash-out');
     });
 
     Route::get('/shift/open', [ShiftController::class, 'create'])->name('shift.open');

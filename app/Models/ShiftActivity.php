@@ -15,13 +15,14 @@ class ShiftActivity extends Model
     const TYPE_RECEIPT_PRINTED = 'RECEIPT_PRINTED';
     const TYPE_RECEIPT_REPRINTED = 'RECEIPT_REPRINTED';
     const TYPE_TRANSACTION_VOID = 'TRANSACTION_VOID';
-    const TYPE_CASH_ADJUSTMENT = 'CASH_ADJUSTMENT';
+    const TYPE_CASH_IN = 'CASH_IN';
+    const TYPE_CASH_OUT = 'CASH_OUT';
 
     public $timestamps = false;
 
     protected $fillable = [
         'shift_id', 'user_id', 'activity_type',
-        'reference_type', 'reference_id', 'description', 'created_at',
+        'reference_type', 'reference_id', 'reference_amount', 'description', 'created_at',
     ];
 
     protected $casts = [

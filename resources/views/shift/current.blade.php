@@ -26,6 +26,33 @@
         </div>
     </div>
 
+    <div class="bg-white border border-line rounded-xl p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold">Kas</h2>
+            <span class="text-sm text-muted">Diharapkan <span class="font-medium text-ink">Rp{{ number_format($summary['expected_cash'], 0, ',', '.') }}</span></span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
+            <div class="bg-background rounded-lg px-3 py-2.5 flex justify-between"><span class="text-muted">Awal</span><span class="font-medium">Rp{{ number_format($shift->opening_cash, 0, ',', '.') }}</span></div>
+            <div class="bg-background rounded-lg px-3 py-2.5 flex justify-between"><span class="text-muted">Masuk</span><span class="font-medium text-success">+Rp{{ number_format($cashIn, 0, ',', '.') }}</span></div>
+            <div class="bg-background rounded-lg px-3 py-2.5 flex justify-between"><span class="text-muted">Keluar</span><span class="font-medium text-error">−Rp{{ number_format($cashOut, 0, ',', '.') }}</span></div>
+            <div class="bg-background rounded-lg px-3 py-2.5 flex justify-between"><span class="text-muted">Penjualan tunai</span><span class="font-medium">Rp{{ number_format($summary['cash_sales'], 0, ',', '.') }}</span></div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <form method="POST" action="{{ route('shift.cash-in') }}" class="flex gap-2">
+                @csrf
+                <input type="number" name="amount" min="1" required placeholder="Nominal kas masuk"
+                       class="rounded-lg border border-line px-3 py-2 text-sm w-48">
+                <button class="px-4 py-2 rounded-lg bg-success text-surface text-sm font-medium hover:opacity-90 transition">Kas Masuk</button>
+            </form>
+            <form method="POST" action="{{ route('shift.cash-out') }}" class="flex gap-2">
+                @csrf
+                <input type="number" name="amount" min="1" required placeholder="Nominal kas keluar"
+                       class="rounded-lg border border-line px-3 py-2 text-sm w-48">
+                <button class="px-4 py-2 rounded-lg border border-error text-error text-sm font-medium hover:bg-error hover:text-surface transition">Kas Keluar</button>
+            </form>
+        </div>
+    </div>
+
     <div class="bg-white border border-line rounded-xl overflow-hidden">
         <div class="px-5 py-4 border-b border-line font-semibold text-sm">Transaksi ({{ $transactions->count() }})</div>
         @if($transactions->isEmpty())

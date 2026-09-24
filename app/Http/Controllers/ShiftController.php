@@ -73,6 +73,9 @@ class ShiftController extends Controller
             'shift' => $shift,
             'activities' => ShiftActivity::where('shift_id', $shift->id)->latest('created_at')->get(),
             'transactions' => $shift->transactions()->with('paymentMethod')->latest()->get(),
+            'cashIn' => ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_IN)->sum('reference_amount'),
+            'cashOut' => ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_OUT)->sum('reference_amount'),
+            'summary' => $this->buildSummary($shift),
         ]);
     }
 
@@ -168,6 +171,39 @@ class ShiftController extends Controller
             ->with('success', 'Shift berhasil ditutup.');
     }
 
+    public function cashIn(Request $request): RedirectResponse
+    {
+        return $this->recordCashMovement($request, ShiftActivity::TYPE_CASH_IN, 'Kas Masuk');
+    }
+
+    public function cashOut(Request $request): RedirectResponse
+    {
+        return $this->recordCashMovement($request, ShiftActivity::TYPE_CASH_OUT, 'Kas Keluar');
+    }
+
+    private function recordCashMovement(Request $request, string $type, string $label): RedirectResponse
+    {
+        $shift = Shift::currentForUser(session('user_id'));
+
+        if (! $shift) {
+            return redirect()->route('shift.open');
+        }
+
+        $validated = $request->validate([
+            'amount' => ['required', 'integer', 'min:1'],
+        ]);
+
+        ShiftActivity::create([
+            'shift_id' => $shift->id,
+            'user_id' => session('user_id'),
+            'activity_type' => $type,
+            'reference_amount' => $validated['amount'],
+            'description' => "{$label} Rp".number_format($validated['amount'], 0, ',', '.'),
+        ]);
+
+        return back()->with('success', "{$label} tercatat.");
+    }
+
     private function findShiftForReport(Request $request): ?Shift
     {
         if ($id = $request->input('shift')) {
@@ -201,7 +237,9 @@ class ShiftController extends Controller
             ->pluck('total', 'code');
 
         $cashSales = (int) ($byMethod['CASH'] ?? 0);
-        $expectedCash = $shift->opening_cash + $cashSales;
+        $cashIn = (int) ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_IN)->sum('reference_amount');
+        $cashOut = (int) ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_OUT)->sum('reference_amount');
+        $expectedCash = $shift->opening_cash + $cashSales + $cashIn - $cashOut;
 
         return [
             'total_transactions' => $totalTransactions,
