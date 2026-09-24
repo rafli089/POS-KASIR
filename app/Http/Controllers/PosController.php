@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\PaymentMethod;
+use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\ShiftActivity;
 use App\Models\Product;
@@ -28,7 +29,8 @@ class PosController extends Controller
         $products = $query->orderBy('name')->get();
         $paymentMethods = PaymentMethod::where('status', 'ACTIVE')->get();
         $cashId = PaymentMethod::where('code', 'CASH')->value('id');
+        $serviceChargePct = (int) (Setting::value(Setting::KEY_SERVICE_CHARGE_PERCENT, 0) ?? 0);
 
-        return view('pos.index', compact('shift', 'categories', 'products', 'categoryId', 'paymentMethods', 'cashId'));
+        return view('pos.index', compact('shift', 'categories', 'products', 'categoryId', 'paymentMethods', 'cashId', 'serviceChargePct'));
     }
 }

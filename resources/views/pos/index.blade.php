@@ -76,6 +76,9 @@
 
                     <div class="p-4 border-t border-line space-y-1.5">
                         <div class="flex justify-between text-sm text-muted"><span>Subtotal</span><span x-text="fmt(subtotal)"></span></div>
+                        @if($serviceChargePct > 0)
+                            <div class="flex justify-between text-sm text-muted"><span>Layanan ({{ $serviceChargePct }}%)</span><span x-text="fmt(serviceCharge)"></span></div>
+                        @endif
                         <div class="flex justify-between text-sm text-muted"><span>Pajak (0%)</span><span x-text="fmt(0)"></span></div>
                         <div class="flex justify-between text-base font-semibold pt-1 border-t border-line/60 mt-1">
                             <span>Total</span><span x-text="fmt(total)"></span>
@@ -173,7 +176,11 @@ function pos() {
             return this.cart.reduce((s, i) => s + i.price * i.qty, 0);
         },
 
-        get total() { return this.subtotal; },
+        get serviceCharge() {
+            return Math.round(this.subtotal * {{ (int) $serviceChargePct }} / 100);
+        },
+
+        get total() { return this.subtotal + this.serviceCharge; },
 
         async pay() {
             if (this.paying) return;

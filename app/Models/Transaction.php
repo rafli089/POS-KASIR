@@ -17,13 +17,14 @@ class Transaction extends Model
 
     protected $fillable = [
         'shift_id', 'user_id', 'transaction_number', 'subtotal', 'discount', 'tax',
-        'grand_total', 'payment_method_id', 'payment_amount', 'change_amount', 'status',
+        'service_charge', 'grand_total', 'payment_method_id', 'payment_amount', 'change_amount', 'status',
     ];
 
     protected $casts = [
         'subtotal' => 'integer',
         'discount' => 'integer',
         'tax' => 'integer',
+        'service_charge' => 'integer',
         'grand_total' => 'integer',
         'payment_amount' => 'integer',
         'change_amount' => 'integer',

@@ -26,6 +26,8 @@
                 @if(session('user_role') === 'ADMIN')
                     <a href="{{ route('users.index') }}"
                        class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'users.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Pengguna</a>
+                    <a href="{{ route('settings.index') }}"
+                       class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'settings.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Pengaturan</a>
                 @endif
             </nav>
 

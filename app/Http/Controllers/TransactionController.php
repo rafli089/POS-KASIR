@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Receipt;
+use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\ShiftActivity;
 use App\Models\Transaction;
@@ -170,7 +171,9 @@ class TransactionController extends Controller
 
             $discount = $validated['discount'] ?? 0;
             $tax = $validated['tax'] ?? 0;
-            $grandTotal = max(0, $subtotal - $discount + $tax);
+            $pct = (int) (Setting::value(Setting::KEY_SERVICE_CHARGE_PERCENT, 0) ?? 0);
+            $serviceCharge = (int) round($subtotal * $pct / 100);
+            $grandTotal = max(0, $subtotal - $discount + $tax + $serviceCharge);
 
             if ($validated['payment_amount'] < $grandTotal) {
                 throw new \DomainException('Uang bayar lebih kecil dari total.');
@@ -185,6 +188,7 @@ class TransactionController extends Controller
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'tax' => $tax,
+                'service_charge' => $serviceCharge,
                 'grand_total' => $grandTotal,
                 'payment_method_id' => $validated['payment_method_id'],
                 'payment_amount' => $validated['payment_amount'],

@@ -70,6 +70,9 @@
             <div class="mt-4 pt-3 border-t border-line space-y-1.5 text-sm">
                 <div class="flex justify-between"><span class="text-muted">Subtotal</span><span>{{ number_format($transaction->subtotal, 0, ',', '.') }}</span></div>
                 <div class="flex justify-between"><span class="text-muted">Diskon</span><span>−{{ number_format($transaction->discount, 0, ',', '.') }}</span></div>
+                @if($transaction->service_charge > 0)
+                    <div class="flex justify-between"><span class="text-muted">Layanan</span><span>+{{ number_format($transaction->service_charge, 0, ',', '.') }}</span></div>
+                @endif
                 <div class="flex justify-between"><span class="text-muted">Pajak</span><span>+{{ number_format($transaction->tax, 0, ',', '.') }}</span></div>
                 <div class="flex justify-between font-semibold text-base pt-2 border-t border-line"><span>Total</span><span>{{ number_format($transaction->grand_total, 0, ',', '.') }}</span></div>
                 <div class="flex justify-between"><span class="text-muted">Bayar</span><span>{{ number_format($transaction->payment_amount, 0, ',', '.') }}</span></div>
@@ -114,6 +117,7 @@
         @endforeach
         <div class="border-t border-black mt-2 pt-1 flex justify-between"><span>Subtotal</span><span>{{ number_format($transaction->subtotal, 0, ',', '.') }}</span></div>
         @if($transaction->discount)<div class="flex justify-between"><span>Diskon</span><span>−{{ number_format($transaction->discount, 0, ',', '.') }}</span></div>@endif
+        @if($transaction->service_charge)<div class="flex justify-between"><span>Layanan</span><span>+{{ number_format($transaction->service_charge, 0, ',', '.') }}</span></div>@endif
         @if($transaction->tax)<div class="flex justify-between"><span>Pajak</span><span>+{{ number_format($transaction->tax, 0, ',', '.') }}</span></div>@endif
         <div class="flex justify-between font-bold text-sm py-1"><span>TOTAL</span><span>{{ number_format($transaction->grand_total, 0, ',', '.') }}</span></div>
         <div class="flex justify-between"><span>{{ $transaction->paymentMethod->name }}</span><span>{{ number_format($transaction->payment_amount, 0, ',', '.') }}</span></div>
