@@ -109,6 +109,23 @@ class ShiftController extends Controller
         ]);
     }
 
+    public function printReport(Request $request): View|RedirectResponse
+    {
+        $shift = $this->findShiftForReport($request);
+
+        if (! $shift) {
+            return redirect()->route('shift.open');
+        }
+
+        return view('shift.print', [
+            'shift' => $shift,
+            'summary' => $this->buildSummary($shift),
+            'transactions' => $shift->transactions()->with('paymentMethod')->latest()->get(),
+            'cashIn' => ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_IN)->sum('reference_amount'),
+            'cashOut' => ShiftActivity::where('shift_id', $shift->id)->where('activity_type', ShiftActivity::TYPE_CASH_OUT)->sum('reference_amount'),
+        ]);
+    }
+
     public function close(Request $request): View|RedirectResponse
     {
         $userId = session('user_id');

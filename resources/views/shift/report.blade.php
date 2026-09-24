@@ -2,7 +2,11 @@
 
 @section('content')
 <div class="space-y-4">
-    <h1 class="text-xl font-semibold">Laporan Shift</h1>
+    <div class="flex items-center justify-between">
+        <h1 class="text-xl font-semibold">Laporan Shift</h1>
+        <a href="{{ route('shift.print', ['shift' => $shift->id]) }}" target="_blank"
+           class="px-4 py-2 rounded-lg border border-line text-sm font-medium hover:bg-background transition">🖨 Cetak</a>
+    </div>
 
     <div class="bg-white border border-line rounded-xl p-5">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">

@@ -38,6 +38,7 @@ Route::middleware('auth.pin')->group(function () {
     Route::post('/shift/open', [ShiftController::class, 'store'])->name('shift.open.store');
     Route::get('/shift/current', [ShiftController::class, 'current'])->name('shift.current');
     Route::get('/shift/report', [ShiftController::class, 'report'])->name('shift.report');
+    Route::get('/shift/print', [ShiftController::class, 'printReport'])->name('shift.print');
 
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
