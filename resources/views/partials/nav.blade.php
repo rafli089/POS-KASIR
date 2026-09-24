@@ -17,6 +17,10 @@
                     <a href="{{ route($route) }}"
                        class="px-3 py-1.5 rounded-lg transition {{ ($current === $route || str_starts_with($current, explode('.', $route)[0].'.')) && $route !== 'shift.current' ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">{{ $label }}</a>
                 @endforeach
+                @if(in_array(session('user_role'), ['ADMIN', 'MANAGER']))
+                    <a href="{{ route('products.index') }}"
+                       class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'products.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Produk</a>
+                @endif
             </nav>
 
             <div class="ml-auto flex items-center gap-3 text-sm">
