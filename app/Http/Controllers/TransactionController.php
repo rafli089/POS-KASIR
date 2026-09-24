@@ -74,7 +74,7 @@ class TransactionController extends Controller
             ]);
         }
 
-        return redirect()->route('transactions.show', $transaction) . '?print=1';
+        return redirect()->route('transactions.show', $transaction)->withQuery(['print' => 1]);
     }
 
     public function refund(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
