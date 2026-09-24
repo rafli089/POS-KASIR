@@ -9,11 +9,12 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['category_id', 'name', 'sku', 'price', 'cost_price', 'status', 'image'];
+    protected $fillable = ['category_id', 'name', 'sku', 'price', 'cost_price', 'stock', 'status', 'image'];
 
     protected $casts = [
         'price' => 'integer',
         'cost_price' => 'integer',
+        'stock' => 'integer',
     ];
 
     public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo

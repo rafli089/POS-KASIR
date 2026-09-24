@@ -42,12 +42,20 @@
                        class="w-full rounded-lg border border-line px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
             </div>
         </div>
-        <div>
-            <label class="block text-sm font-medium mb-1.5">Status</label>
-            <select name="status" class="w-full rounded-lg border border-line px-3.5 py-2.5 text-sm bg-white">
-                <option value="ACTIVE" {{ $product->status === 'ACTIVE' ? 'selected' : '' }}>Aktif</option>
-                <option value="INACTIVE" {{ $product->status === 'INACTIVE' ? 'selected' : '' }}>Nonaktif</option>
-            </select>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-medium mb-1.5">Stok</label>
+                <input type="number" name="stock" min="0" value="{{ old('stock', $product->stock) }}" placeholder="Kosong = unlimited"
+                       class="w-full rounded-lg border border-line px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                @error('stock')<p class="text-xs text-error mt-1.5">{{ $message }}</p>@enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1.5">Status</label>
+                <select name="status" class="w-full rounded-lg border border-line px-3.5 py-2.5 text-sm bg-white">
+                    <option value="ACTIVE" {{ $product->status === 'ACTIVE' ? 'selected' : '' }}>Aktif</option>
+                    <option value="INACTIVE" {{ $product->status === 'INACTIVE' ? 'selected' : '' }}>Nonaktif</option>
+                </select>
+            </div>
         </div>
         <div class="flex gap-2 pt-2">
             <a href="{{ route('products.index') }}" class="px-4 py-2.5 rounded-lg border border-line text-sm hover:border-ink transition">Batal</a>

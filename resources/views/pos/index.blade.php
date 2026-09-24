@@ -15,30 +15,40 @@
         {{-- Product area --}}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div class="lg:col-span-8 space-y-3">
-                <div class="flex items-center gap-1 bg-white border border-line rounded-xl p-1.5 overflow-x-auto text-sm">
-                    <a href="{{ route('pos.index') }}"
-                       class="shrink-0 px-3.5 py-1.5 rounded-lg transition {{ !$categoryId ? 'bg-primary text-surface' : 'text-muted hover:text-ink' }}">Semua</a>
-                    @foreach($categories as $category)
-                        <a href="{{ route('pos.index', ['category' => $category->id]) }}"
-                           class="shrink-0 px-3.5 py-1.5 rounded-lg transition {{ $categoryId == $category->id ? 'bg-primary text-surface' : 'text-muted hover:text-ink' }}">{{ $category->name }}</a>
-                    @endforeach
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <input type="text" x-model="searchQuery" placeholder="Cari produk...  /" x-ref="searchInput"
+                               class="w-full rounded-lg border border-line bg-white px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary pr-8">
+                        <span x-show="searchQuery" @click="searchQuery=''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink cursor-pointer text-xs">✕</span>
+                    </div>
+                    <div class="flex items-center gap-1 bg-white border border-line rounded-xl p-1.5 overflow-x-auto text-sm">
+                        <a href="{{ route('pos.index') }}"
+                           class="shrink-0 px-3.5 py-1.5 rounded-lg transition {{ !$categoryId ? 'bg-primary text-surface' : 'text-muted hover:text-ink' }}">Semua</a>
+                        @foreach($categories as $category)
+                            <a href="{{ route('pos.index', ['category' => $category->id]) }}"
+                               class="shrink-0 px-3.5 py-1.5 rounded-lg transition {{ $categoryId == $category->id ? 'bg-primary text-surface' : 'text-muted hover:text-ink' }}">{{ $category->name }}</a>
+                        @endforeach
+                    </div>
                 </div>
 
                 @if($products->isEmpty())
                     <div class="bg-white border border-line rounded-xl py-16 text-center text-sm text-muted">Tidak ada produk pada kategori ini.</div>
                 @else
                     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                        @foreach($products as $product)
-                            <button @click="add({{ $product->id }})"
-                                    class="text-left bg-white border border-line rounded-xl p-4 hover:border-primary hover:shadow-sm transition active:scale-[.98]">
-                                <div class="w-full aspect-square rounded-lg bg-background grid place-items-center mb-3 text-2xl">
-                                    {{ $product->image ? '' : '☕' }}
-                                    {{-- placeholder icon --}}
-                                </div>
-                                <div class="text-sm font-medium leading-snug">{{ $product->name }}</div>
-                                <div class="text-sm font-semibold mt-1">{{ number_format($product->price, 0, ',', '.') }}</div>
+                        <template x-for="p in filteredProducts" :key="p.id">
+                            <button @click="add(p.id)"
+                                    :class="p.stock === 0 ? 'opacity-45 cursor-not-allowed' : 'hover:border-primary hover:shadow-sm active:scale-[.98]'"
+                                    class="text-left bg-white border border-line rounded-xl p-4 transition">
+                                <div class="w-full aspect-square rounded-lg bg-background grid place-items-center mb-3 text-2xl">☕</div>
+                                <div class="text-sm font-medium leading-snug" x-text="p.name"></div>
+                                <div class="text-sm font-semibold mt-1" x-text="fmt(p.price)"></div>
+                                <div class="text-xs mt-0.5" :class="p.stock === 0 ? 'text-error' : 'text-muted'"
+                                     x-text="p.stock === null ? '' : (p.stock === 0 ? 'Stok habis' : 'Stok: ' + fmt(p.stock))"></div>
                             </button>
-                        @endforeach
+                        </template>
+                        <div x-show="!filteredProducts.length && searchQuery" class="col-span-full text-center py-10 text-sm text-muted">
+                            Produk "<span x-text="searchQuery"></span>" tidak ditemukan.
+                        </div>
                     </div>
                 @endif
             </div>
@@ -57,7 +67,7 @@
                             <div class="flex items-start gap-2 px-2 py-2.5 border-b border-line/60">
                                 <div class="flex-1 min-w-0">
                                     <div class="text-sm font-medium truncate" x-text="item.name"></div>
-                                    <div class="text-xs text-muted" x-text="fmt(item.price) + ' × ' + item.qty"></div>
+                                    <div class="text-xs text-muted" x-text="fmt(item.price) + ' × ' + item.qty + ' = ' + fmt(item.price * item.qty)"></div>
                                     <input type="text" x-model="item.notes" placeholder="Catatan..." maxlength="255"
                                            class="text-xs text-muted bg-background rounded px-1.5 py-0.5 mt-1 w-full focus:outline-none focus:ring-1 focus:ring-primary">
                                 </div>
@@ -94,7 +104,7 @@
                         </div>
                         <button @click="openPayment()" :disabled="!cart.length"
                                 class="w-full mt-3 py-3 rounded-lg bg-primary text-surface text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-black transition">
-                            Bayar · <span x-text="fmt(total)"></span>
+                            Bayar (F2) · <span x-text="fmt(total)"></span>
                         </button>
                     </div>
                 </div>
@@ -116,7 +126,7 @@
 
             <div class="grid grid-cols-2 gap-2 mb-4">
                 @foreach($paymentMethods ?? [] as $method)
-                    <button @click="method={{ $method->id }}; if(method=={{ $cashId ?? 0 }}){ cash=total }" 
+                    <button @click="method={{ $method->id }}; if(method=={{ $cashId ?? 0 }}){ cash=total }"
                             class="py-2.5 rounded-lg border text-sm transition"
                             :class="method==={{ $method->id }} ? 'border-primary bg-primary text-surface' : 'border-line hover:border-primary'">
                         {{ $method->name }}
@@ -126,19 +136,25 @@
 
             <div x-show="method == {{ $cashId ?? 0 }}" class="mb-4">
                 <label class="block text-xs text-muted mb-1">Uang diterima</label>
-                <input type="number" min="0" x-model.number="cash" class="w-full rounded-lg border border-line px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                <p class="text-xs mt-1.5">Kembalian: <span class="font-semibold" x-text="fmt(Math.max(cash-total,0))"></span></p>
+                <input type="number" min="0" x-model.number="cash" x-ref="cashInput"
+                       class="w-full rounded-lg border border-line px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                <div class="flex gap-1.5 mt-2">
+                    <button @click="cash=total" class="flex-1 px-2 py-1.5 rounded-md bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition">Pas</button>
+                    <button @click="quickCash(Math.ceil(total/50000)*50000)" class="flex-1 px-2 py-1.5 rounded-md bg-background text-xs text-muted hover:bg-line transition" x-text="fmt(Math.ceil(total/50000)*50000)"></button>
+                    <button @click="quickCash(Math.ceil(total/100000)*100000)" class="flex-1 px-2 py-1.5 rounded-md bg-background text-xs text-muted hover:bg-line transition" x-text="fmt(Math.ceil(total/100000)*100000)"></button>
+                </div>
+                <p class="text-xs mt-2">Kembalian: <span class="font-semibold" x-text="fmt(Math.max(cash-total,0))"></span></p>
             </div>
 
             <div x-show="method != {{ $cashId ?? 0 }}" class="mb-4 text-sm text-muted bg-background rounded-lg px-3 py-2.5">
-                Bayar melalui {{-- placeholder --}} metode terpilih.
+                Bayar melalui metode terpilih.
             </div>
 
             <div class="flex gap-2">
                 <button @click="showPayment=false" class="flex-1 py-2.5 rounded-lg border border-line text-sm">Batal</button>
                 <button @click="pay()" :disabled="method=={{ $cashId ?? 0 }} && cash < total"
                         class="flex-1 py-2.5 rounded-lg bg-primary text-surface text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-black transition">
-                    Konfirmasi
+                    Konfirmasi (Enter)
                 </button>
             </div>
         </div>
@@ -151,6 +167,7 @@
 function pos() {
     return {
         products: @json($products),
+        searchQuery: '',
         cart: [],
         showPayment: false,
         method: {{ $cashId ?? 0 }},
@@ -160,12 +177,33 @@ function pos() {
         tax: 0,
 
         init() {
-            if (this.products.length === 0) return;
+            window.addEventListener('keydown', (e) => {
+                if (this.showPayment) {
+                    if (e.key === 'Escape') { this.showPayment = false; return; }
+                    if (e.key === 'Enter' && !e.target.closest('input')) {
+                        e.preventDefault(); this.pay(); return;
+                    }
+                    return;
+                }
+                if (e.key === 'F2') { e.preventDefault(); if (this.cart.length) this.openPayment(); return; }
+                if (e.key === '/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
+                    e.preventDefault(); this.$refs.searchInput?.focus();
+                }
+            });
         },
+
+        get filteredProducts() {
+            const q = this.searchQuery.toLowerCase().trim();
+            if (!q) return this.products;
+            return this.products.filter(p => p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q));
+        },
+
+        quickCash(n) { this.cash = Math.max(this.cash, n); },
 
         add(id) {
             const p = this.products.find(x => x.id === id);
             if (!p) return;
+            if (p.stock === 0) return;
             const idx = this.cart.findIndex(x => x.id === id);
             if (idx >= 0) this.cart[idx].qty++;
             else this.cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, notes: '' });
@@ -179,6 +217,7 @@ function pos() {
         openPayment() {
             this.showPayment = true;
             this.cash = this.total;
+            this.$nextTick(() => { if (this.method === {{ $cashId ?? 0 }}) this.$refs.cashInput?.focus(); });
         },
 
         fmt(n) { return new Intl.NumberFormat('id-ID').format(n); },

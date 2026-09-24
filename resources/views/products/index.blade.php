@@ -18,6 +18,7 @@
                         <th class="px-5 py-2.5 font-medium">SKU</th>
                         <th class="px-5 py-2.5 font-medium">Kategori</th>
                         <th class="px-5 py-2.5 font-medium text-right">Harga</th>
+                        <th class="px-5 py-2.5 font-medium text-right">Stok</th>
                         <th class="px-5 py-2.5 font-medium">Status</th>
                         <th class="px-5 py-2.5"></th>
                     </tr>
@@ -29,6 +30,9 @@
                             <td class="px-5 py-2.5 text-muted">{{ $product->sku }}</td>
                             <td class="px-5 py-2.5">{{ $product->category?->name ?? '—' }}</td>
                             <td class="px-5 py-2.5 text-right">Rp{{ number_format($product->price, 0, ',', '.') }}</td>
+                            <td class="px-5 py-2.5 text-right {{ $product->stock !== null && $product->stock === 0 ? 'text-error' : 'text-muted' }}">
+                                {{ $product->stock !== null ? number_format($product->stock, 0, ',', '.') : '∞' }}
+                            </td>
                             <td class="px-5 py-2.5">
                                 @if($product->status === 'ACTIVE')
                                     <span class="px-2 py-0.5 rounded-md text-xs bg-success/10 text-success font-medium">ACTIVE</span>

@@ -120,6 +120,13 @@ class TransactionController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $userId, $validated) {
             $transaction->update(['status' => Transaction::STATUS_VOID]);
 
+            foreach ($transaction->items as $item) {
+                $product = \App\Models\Product::find($item->product_id);
+                if ($product?->stock !== null) {
+                    $product->increment('stock', $item->quantity);
+                }
+            }
+
             ShiftActivity::create([
                 'shift_id' => $transaction->shift_id,
                 'user_id' => $userId,
@@ -160,8 +167,18 @@ class TransactionController extends Controller
             return response()->json(['message' => 'Shift tidak aktif.'], 422);
         }
 
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $shift, $userId, $request) {
-            $items = \App\Models\Product::whereIn('id', collect($validated['items'])->pluck('product_id'))->get()->keyBy('id');
+        $items = \App\Models\Product::whereIn('id', collect($validated['items'])->pluck('product_id'))->get()->keyBy('id');
+
+        foreach ($validated['items'] as $row) {
+            $product = $items[$row['product_id']];
+            if ($product->stock !== null && $product->stock < $row['quantity']) {
+                return response()->json([
+                    'message' => "Stok {$product->name} tidak cukup (sisa {$product->stock}).",
+                ], 422);
+            }
+        }
+
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $shift, $userId, $request, $items) {
 
             $subtotal = 0;
             foreach ($validated['items'] as $row) {
@@ -176,7 +193,9 @@ class TransactionController extends Controller
             $grandTotal = max(0, $subtotal - $discount + $tax + $serviceCharge);
 
             if ($validated['payment_amount'] < $grandTotal) {
-                throw new \DomainException('Uang bayar lebih kecil dari total.');
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                    response()->json(['message' => 'Uang bayar lebih kecil dari total.'], 422)
+                );
             }
 
             $change = $validated['payment_amount'] - $grandTotal;
@@ -198,6 +217,9 @@ class TransactionController extends Controller
 
             foreach ($validated['items'] as $row) {
                 $product = $items[$row['product_id']];
+                if ($product->stock !== null) {
+                    $product->decrement('stock', $row['quantity']);
+                }
                 TransactionItem::create([
                     'transaction_id' => $transaction->id,
                     'product_id' => $product->id,
