@@ -17,8 +17,11 @@ class DashboardController extends Controller
         $today = now()->startOfDay();
 
         $query = Transaction::where('transactions.status', 'COMPLETED')
-            ->whereDate('transactions.created_at', '>=', $today)
-            ->where('transactions.user_id', $userId);
+            ->whereDate('transactions.created_at', '>=', $today);
+
+        if ($role === 'CASHIER') {
+            $query->where('transactions.user_id', $userId);
+        }
 
         $totalSales = (clone $query)->sum('grand_total');
         $totalTransactions = (clone $query)->count();

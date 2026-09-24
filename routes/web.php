@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -42,5 +43,8 @@ Route::middleware('auth.pin')->group(function () {
     Route::middleware('role.admin')->group(function () {
         Route::resource('categories', CategoryController::class)->except(['show']);
         Route::resource('products', ProductController::class)->except(['show']);
+
+        Route::get('/reports/products', [ReportController::class, 'products'])->name('reports.products');
+        Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
     });
 });

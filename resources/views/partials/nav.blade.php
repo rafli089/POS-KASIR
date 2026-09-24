@@ -20,6 +20,8 @@
                 @if(in_array(session('user_role'), ['ADMIN', 'MANAGER']))
                     <a href="{{ route('products.index') }}"
                        class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'products.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Produk</a>
+                    <a href="{{ route('reports.daily') }}"
+                       class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'reports.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Laporan</a>
                 @endif
             </nav>
 
