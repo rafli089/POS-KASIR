@@ -139,6 +139,7 @@ class TransactionController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.notes' => ['nullable', 'string', 'max:255'],
             'discount' => ['nullable', 'integer', 'min:0'],
             'tax' => ['nullable', 'integer', 'min:0'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
@@ -200,6 +201,7 @@ class TransactionController extends Controller
                     'quantity' => $row['quantity'],
                     'unit_price' => $product->price,
                     'discount' => 0,
+                    'notes' => $row['notes'] ?? null,
                     'subtotal' => $product->price * $row['quantity'],
                 ]);
             }

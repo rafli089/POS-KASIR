@@ -58,13 +58,15 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="text-sm font-medium truncate" x-text="item.name"></div>
                                     <div class="text-xs text-muted" x-text="fmt(item.price) + ' × ' + item.qty"></div>
+                                    <input type="text" x-model="item.notes" placeholder="Catatan..." maxlength="255"
+                                           class="text-xs text-muted bg-background rounded px-1.5 py-0.5 mt-1 w-full focus:outline-none focus:ring-1 focus:ring-primary">
                                 </div>
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1 mt-5">
                                     <button @click="changeQty(idx, -1)" class="w-6 h-6 rounded-md bg-background hover:bg-line text-sm leading-none">−</button>
                                     <span class="w-6 text-center text-sm" x-text="item.qty"></span>
                                     <button @click="changeQty(idx, 1)" class="w-6 h-6 rounded-md bg-background hover:bg-line text-sm leading-none">+</button>
                                 </div>
-                                <button @click="cart.splice(idx,1)" class="text-xs text-muted hover:text-error px-1">✕</button>
+                                <button @click="cart.splice(idx,1)" class="text-xs text-muted hover:text-error px-1 mt-5">✕</button>
                             </div>
                         </template>
                         <div x-show="!cart.length" class="text-center text-sm text-muted py-10">
@@ -152,7 +154,7 @@ function pos() {
             if (!p) return;
             const idx = this.cart.findIndex(x => x.id === id);
             if (idx >= 0) this.cart[idx].qty++;
-            else this.cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+            else this.cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, notes: '' });
         },
 
         changeQty(idx, d) {
@@ -178,7 +180,7 @@ function pos() {
             this.paying = true;
             try {
                 const res = await axios.post('/transactions', {
-                    items: this.cart.map(i => ({ product_id: i.id, quantity: i.qty })),
+                    items: this.cart.map(i => ({ product_id: i.id, quantity: i.qty, notes: i.notes || null })),
                     payment_method_id: this.method,
                     payment_amount: this.method === {{ $cashId ?? 0 }} ? this.cash : this.total,
                     discount: 0,

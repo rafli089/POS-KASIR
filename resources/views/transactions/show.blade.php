@@ -56,6 +56,9 @@
                             <td class="py-2">
                                 <div>{{ $item->product_name }}</div>
                                 <div class="text-xs text-muted">{{ number_format($item->unit_price, 0, ',', '.') }}</div>
+                                @if($item->notes)
+                                    <div class="text-xs text-warning italic">📝 {{ $item->notes }}</div>
+                                @endif
                             </td>
                             <td class="py-2 text-center">{{ $item->quantity }}</td>
                             <td class="py-2 text-right">{{ number_format($item->subtotal, 0, ',', '.') }}</td>
@@ -101,6 +104,9 @@
                 <span>{{ $item->product_name }}</span>
                 <span>{{ $item->quantity }}×</span>
             </div>
+            @if($item->notes)
+                <div class="text-xs text-right" style="margin-left:8px">📝 {{ $item->notes }}</div>
+            @endif
             <div class="flex justify-between text-right">
                 <span></span>
                 <span>{{ number_format($item->subtotal, 0, ',', '.') }}</span>

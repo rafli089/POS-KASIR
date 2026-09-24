@@ -11,7 +11,7 @@ class TransactionItem extends Model
 
     protected $fillable = [
         'transaction_id', 'product_id', 'product_name',
-        'quantity', 'unit_price', 'discount', 'subtotal',
+        'quantity', 'unit_price', 'discount', 'notes', 'subtotal',
     ];
 
     protected $casts = [
