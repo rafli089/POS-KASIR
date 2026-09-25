@@ -60,6 +60,32 @@ class ShiftController extends Controller
         return redirect()->route('pos.index')->with('success', 'Shift berhasil dibuka.');
     }
 
+    public function index(Request $request): View
+    {
+        $query = Shift::with('user')
+            ->when($request->input('status'), fn ($q, $s) => $q->where('status', $s))
+            ->when($request->input('cashier_id'), fn ($q, $id) => $q->where('user_id', $id));
+
+        return view('shift.index', [
+            'shifts' => $query->latest('opened_at')->paginate(20)->withQueryString(),
+            'users' => \App\Models\User::orderBy('name')->get(),
+        ]);
+    }
+
+    public function closeForm(Shift $shift): View|RedirectResponse
+    {
+        if ($shift->status !== Shift::STATUS_OPEN) {
+            return redirect()->route('shifts.index')->withErrors(['close' => 'Shift ini sudah ditutup.']);
+        }
+
+        return view('shift.close', [
+            'shift' => $shift,
+            'summary' => $this->buildSummary($shift),
+            'closeAction' => route('shifts.close.store', $shift),
+            'backTarget' => route('shifts.index'),
+        ]);
+    }
+
     public function current(Request $request): View|RedirectResponse
     {
         $userId = session('user_id');
@@ -135,7 +161,7 @@ class ShiftController extends Controller
             return redirect()->route('shift.open');
         }
 
-        if ($shift->transactions()->where('status', Shift::STATUS_OPEN)->exists()) {
+        if ($shift->transactions()->where('status', \App\Models\Transaction::STATUS_PENDING)->exists()) {
             return back()->withErrors(['close' => 'Masih ada transaksi pending.']);
         }
 
@@ -147,13 +173,61 @@ class ShiftController extends Controller
 
     public function closeShift(Request $request): RedirectResponse
     {
-        $userId = session('user_id');
-        $shift = Shift::currentForUser($userId);
+        $shift = Shift::currentForUser(session('user_id'));
 
         if (! $shift) {
             return redirect()->route('shift.open')->withErrors(['close' => 'Tidak ada shift aktif.']);
         }
 
+        return $this->performClose($request, $shift);
+    }
+
+    public function closeShiftFor(Request $request, Shift $shift): RedirectResponse
+    {
+        if ($shift->status !== Shift::STATUS_OPEN) {
+            return back()->withErrors(['close' => 'Shift ini sudah ditutup.']);
+        }
+
+        return $this->performClose($request, $shift);
+    }
+
+    public function closeShiftForQuick(Request $request, Shift $shift): RedirectResponse
+    {
+        if ($shift->status !== Shift::STATUS_OPEN) {
+            return back()->withErrors(['close' => 'Shift ini sudah ditutup.']);
+        }
+
+        $summary = $this->buildSummary($shift);
+        $expected = $summary['expected_cash'];
+        $actual = $expected;
+
+        DB::transaction(function () use ($shift, $expected, $actual) {
+            $shift->update([
+                'closed_at' => now(),
+                'expected_cash' => $expected,
+                'actual_cash' => $actual,
+                'cash_difference' => 0,
+                'status' => Shift::STATUS_CLOSED,
+            ]);
+
+            ShiftActivity::create([
+                'shift_id' => $shift->id,
+                'user_id' => session('user_id'),
+                'activity_type' => ShiftActivity::TYPE_CLOSE_SHIFT,
+                'description' => 'Close Shift (Quick) — Expected Rp'.number_format($expected, 0, ',', '.'),
+            ]);
+        });
+
+        if (session('shift_id') == $shift->id) {
+            session()->forget('shift_id');
+        }
+
+        return redirect()->route('shift.report', ['shift' => $shift->id])
+            ->with('success', 'Shift berhasil ditutup (tanpa konfirmasi).');
+    }
+
+    private function performClose(Request $request, Shift $shift): RedirectResponse
+    {
         $validated = $request->validate([
             'actual_cash' => ['required', 'integer', 'min:0'],
         ]);
@@ -163,7 +237,7 @@ class ShiftController extends Controller
         $actual = $validated['actual_cash'];
         $difference = $actual - $expected;
 
-        DB::transaction(function () use ($shift, $userId, $expected, $actual, $difference) {
+        DB::transaction(function () use ($shift, $expected, $actual, $difference) {
             $shift->update([
                 'closed_at' => now(),
                 'expected_cash' => $expected,
@@ -174,7 +248,7 @@ class ShiftController extends Controller
 
             ShiftActivity::create([
                 'shift_id' => $shift->id,
-                'user_id' => $userId,
+                'user_id' => session('user_id'),
                 'activity_type' => ShiftActivity::TYPE_CLOSE_SHIFT,
                 'description' => 'Close Shift — Expected Rp'.number_format($expected, 0, ',', '.')
                     .', Actual Rp'.number_format($actual, 0, ',', '.')
@@ -182,7 +256,9 @@ class ShiftController extends Controller
             ]);
         });
 
-        session()->forget('shift_id');
+        if (session('shift_id') == $shift->id) {
+            session()->forget('shift_id');
+        }
 
         return redirect()->route('shift.report', ['shift' => $shift->id])
             ->with('success', 'Shift berhasil ditutup.');

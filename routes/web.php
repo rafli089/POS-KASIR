@@ -60,6 +60,11 @@ Route::middleware('auth.pin')->group(function () {
         Route::get('/modifiers', [ModifierController::class, 'index'])->name('modifiers.index');
         Route::post('/modifiers', [ModifierController::class, 'update'])->name('modifiers.update');
 
+        Route::get('/shifts', [ShiftController::class, 'index'])->name('shifts.index');
+        Route::get('/shifts/{shift}/close', [ShiftController::class, 'closeForm'])->name('shifts.close');
+        Route::post('/shifts/{shift}/close', [ShiftController::class, 'closeShiftFor'])->name('shifts.close.store');
+        Route::post('/shifts/{shift}/close-quick', [ShiftController::class, 'closeShiftForQuick'])->name('shifts.close.quick');
+
         Route::middleware('role.admin_only')->group(function () {
             Route::resource('users', UserController::class)->except(['show']);
             Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');

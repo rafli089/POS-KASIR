@@ -22,6 +22,8 @@
                        class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'products.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Produk</a>
                     <a href="{{ route('modifiers.index') }}"
                        class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'modifiers.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Modifier</a>
+                    <a href="{{ route('shifts.index') }}"
+                       class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'shifts.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Shift</a>
                     <a href="{{ route('reports.daily') }}"
                        class="px-3 py-1.5 rounded-lg transition {{ str_starts_with($current ?? '', 'reports.') ? 'bg-primary text-surface' : 'text-muted hover:text-ink hover:bg-background' }}">Laporan</a>
                 @endif
