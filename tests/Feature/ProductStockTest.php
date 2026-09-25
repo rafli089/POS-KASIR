@@ -87,11 +87,29 @@ class ProductStockTest extends TestCase
             'payment_amount' => 100000,
         ])->assertStatus(201);
 
-        $txId = \App\Models\Transaction::first()->id;
+        $tx = \App\Models\Transaction::first();
 
         $this->assertSame(6, $this->product->fresh()->stock);
 
-        $this->post(route('transactions.void', $txId), ['reason' => 'Salah input']);
+        // Cashier requests void
+        $this->post(route('transactions.authorize', $tx), [
+            'action' => 'VOID',
+            'transaction_code' => $tx->transaction_number,
+            'reason' => 'Salah input',
+        ])->assertRedirect();
+
+        // Manager approves → OTP
+        $this->post('/logout');
+        $this->post('/login', ['user_id' => $this->manager->id, 'pin' => '123456']);
+        $this->session(['shift_id' => $tx->shift_id]);
+        $this->post(route('transactions.approve', $tx))->assertRedirect();
+        $otp = $this->app['session']->get('authorization_otp');
+
+        // Cashier executes void with OTP
+        $this->post('/logout');
+        $this->post('/login', ['user_id' => $this->cashier->id, 'pin' => '123450']);
+        $this->session(['shift_id' => $tx->shift_id]);
+        $this->post(route('transactions.void', $tx), ['otp' => $otp])->assertRedirect();
 
         $this->assertSame(10, $this->product->fresh()->stock);
     }
