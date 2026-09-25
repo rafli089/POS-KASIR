@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Transaction;
+use App\Models\TransactionAuthorization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -40,30 +41,56 @@ class RefundTransactionTest extends TestCase
         ]);
     }
 
-    private function refundAs(User $user, string $pin, array $params = ['amount' => 36000, 'reason' => 'pelanggan batal beli'])
-    {
-        $this->post('/logout');
-        $this->post('/login', ['user_id' => $user->id, 'pin' => $pin]);
-        $this->session(['shift_id' => Transaction::first()->shift_id]);
-
-        return $this->post(route('transactions.refund', Transaction::first()), $params);
-    }
-
-    public function test_cashier_cannot_refund(): void
+    private function requestRefund(int $amount = 36000, string $reason = 'pelanggan batal beli'): TransactionAuthorization
     {
         $tx = Transaction::first();
-        $this->post(route('transactions.refund', $tx), ['amount' => 36000, 'reason' => 'x'])
+
+        $this->post(route('transactions.authorize', $tx), [
+            'action' => 'REFUND',
+            'transaction_code' => $tx->transaction_number,
+            'reason' => $reason,
+            'amount' => $amount,
+        ])->assertRedirect();
+
+        return TransactionAuthorization::where('transaction_id', $tx->id)->where('action', 'REFUND')->firstOrFail();
+    }
+
+    private function approveAs(User $user, string $pin): string
+    {
+        $tx = Transaction::first();
+
+        $this->post('/logout');
+        $this->post('/login', ['user_id' => $user->id, 'pin' => $pin]);
+        $this->session(['shift_id' => $tx->shift_id]);
+
+        $this->post(route('transactions.approve', $tx))->assertRedirect();
+
+        return $this->app['session']->get('authorization_otp');
+    }
+
+    public function test_cashier_cannot_refund_without_otp(): void
+    {
+        $tx = Transaction::first();
+        $this->post(route('transactions.refund', $tx), ['otp' => '111111'])
             ->assertSessionHasErrors('refund');
 
         $this->assertSame('COMPLETED', $tx->fresh()->status);
     }
 
-    public function test_manager_can_refund(): void
+    public function test_refund_full_flow_with_otp(): void
     {
-        $this->refundAs($this->manager, '123456')->assertRedirect();
+        $this->requestRefund();
+        $otp = $this->approveAs($this->manager, '123456');
 
-        $tx = Transaction::first()->fresh();
-        $this->assertSame('REFUNDED', $tx->status);
+        $tx = Transaction::first();
+        $this->post('/logout');
+        $this->post('/login', ['user_id' => $this->cashier->id, 'pin' => '123450']);
+        $this->session(['shift_id' => $tx->shift_id]);
+
+        $this->post(route('transactions.refund', $tx), ['otp' => $otp])
+            ->assertRedirect(route('transactions.show', $tx));
+
+        $this->assertSame('REFUNDED', $tx->fresh()->status);
         $this->assertDatabaseHas('shift_activities', [
             'activity_type' => 'TRANSACTION_REFUND',
             'reference_amount' => 36000,
@@ -74,39 +101,35 @@ class RefundTransactionTest extends TestCase
     {
         Transaction::first()->update(['status' => Transaction::STATUS_REFUNDED]);
 
-        $this->refundAs($this->admin, '123456')
+        $tx = Transaction::first();
+        $this->post(route('transactions.refund', $tx), ['otp' => '111111'])
             ->assertSessionHasErrors('refund');
     }
 
-    public function test_refund_rejects_amount_greater_than_total(): void
+    public function test_refund_request_rejects_amount_greater_than_total(): void
     {
-        $this->refundAs($this->admin, '123456', ['amount' => 999999, 'reason' => 'x'])
-            ->assertSessionHasErrors('amount');
+        $this->post(route('transactions.authorize', Transaction::first()), [
+            'action' => 'REFUND',
+            'transaction_code' => Transaction::first()->transaction_number,
+            'reason' => 'x',
+            'amount' => 999999,
+        ])->assertSessionHasErrors('amount');
     }
 
     public function test_refund_excludes_from_expected_cash(): void
     {
         $shiftId = Transaction::first()->shift_id;
 
-        $this->post('/logout');
-        $this->post('/login', ['user_id' => $this->cashier->id, 'pin' => '123450']);
-        $this->post('/shift/open', ['opening_cash' => 500000]);
-        $this->session(['shift_id' => $shiftId]);
+        $this->requestRefund();
+        $otp = $this->approveAs($this->admin, '123456');
 
-        // Refund as manager so role check passes; both manager & cashier must be in same shift
-        $this->post('/logout');
-        $this->post('/login', ['user_id' => $this->manager->id, 'pin' => '123456']);
-        $this->session(['shift_id' => $shiftId]);
-
-        $this->post(route('transactions.refund', Transaction::first()), ['amount' => 36000, 'reason' => 'batal'])
-            ->assertRedirect();
-
-        // Back as cashier (shift owner) to view current shift summary
+        $tx = Transaction::first();
         $this->post('/logout');
         $this->post('/login', ['user_id' => $this->cashier->id, 'pin' => '123450']);
         $this->session(['shift_id' => $shiftId]);
 
-        // Opening 500000 + cashSales 0 + refund 36000 removed → 464.000
+        $this->post(route('transactions.refund', $tx), ['otp' => $otp])->assertRedirect();
+
         $this->get('/shift/current')->assertOk()->assertSee('464.000');
     }
 }

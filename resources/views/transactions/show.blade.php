@@ -1,32 +1,36 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="{ printing: false, reprintDialog: false }" x-init="if (new URLSearchParams(window.location.search).has('print')) setTimeout(() => { printing = true; window.print(); }, 300)">
-    <div class="no-print mb-4 flex flex-wrap gap-2">
+<div x-data="{ printing: false, reprintDialog: false, authOpen: false, authAction: '', authStep: 'request' }" x-init="if (new URLSearchParams(window.location.search).has('print')) setTimeout(() => { printing = true; window.print(); }, 300)">
+    @php
+        $voidStep = $voidAuth?->isValid() ? 'otp' : ($voidAuth?->isPending() ? 'waiting' : 'request');
+        $refundStep = $refundAuth?->isValid() ? 'otp' : ($refundAuth?->isPending() ? 'waiting' : 'request');
+    @endphp
+    <div class="no-print mb-4 flex flex-wrap gap-2 items-center">
         <a href="{{ url()->previous() }}" class="px-4 py-2 rounded-lg border border-line text-sm hover:border-primary transition">Kembali</a>
         <button @click="reprintDialog = true" class="px-4 py-2 rounded-lg bg-primary text-surface text-sm font-medium hover:bg-black transition">Cetak Ulang Struk</button>
+        @if($pendingAuth && $isApprover)
+            <form method="POST" action="{{ route('transactions.approve', $transaction) }}" class="inline"
+                  onsubmit="return confirm('Setujui permintaan {{ $pendingAuth->action }} dari {{ $pendingAuth->requester->name }}? Kode OTP akan dibuat.')">
+                @csrf
+                <button class="px-4 py-2 rounded-lg bg-success text-surface text-sm font-medium hover:opacity-90 transition">
+                    Setujui &amp; Beri OTP ({{ $pendingAuth->action }})
+                </button>
+            </form>
+        @endif
         <span class="ml-auto text-xs text-muted self-center">Struk dicetak {{ $transaction->receipt?->print_count ?? 0 }}×</span>
-                @if($canVoid ?? false)
-                    <form method="POST" action="{{ route('transactions.void', $transaction) }}" id="void-form" class="inline">
-                        @csrf
-                        <input type="hidden" name="reason" id="void-reason">
-                        <button type="button" onclick="const r = prompt('Alasan pembatalan (wajib):'); if (r) { document.getElementById('void-reason').value = r; document.getElementById('void-form').submit(); }"
-                                class="px-4 py-2 rounded-lg border border-error text-error text-sm hover:bg-error hover:text-surface transition">
-                            Batalkan Transaksi
-                        </button>
-                    </form>
-                @endif
-                @if($canRefund ?? false)
-                    <form method="POST" action="{{ route('transactions.refund', $transaction) }}" id="refund-form" class="inline">
-                        @csrf
-                        <input type="hidden" name="amount" id="refund-amount">
-                        <input type="hidden" name="reason" id="refund-reason">
-                        <button type="button" onclick="const amt = prompt('Nominal refund (maks Rp{{ $transaction->grand_total }}):'); const rn = prompt('Alasan refund (wajib):'); if (amt && rn) { document.getElementById('refund-amount').value = amt; document.getElementById('refund-reason').value = rn; document.getElementById('refund-form').submit(); }"
-                                class="px-4 py-2 rounded-lg border border-warning text-warning text-sm hover:bg-warning hover:text-surface transition">
-                            Refund
-                        </button>
-                    </form>
-                @endif
+        @if($canVoid)
+            <button type="button" @click="authAction='void'; authStep='{{ $voidStep }}'; authOpen=true"
+                    class="px-4 py-2 rounded-lg border border-error text-error text-sm hover:bg-error hover:text-surface transition">
+                Batalkan Transaksi
+            </button>
+        @endif
+        @if($canRefund)
+            <button type="button" @click="authAction='refund'; authStep='{{ $refundStep }}'; authOpen=true"
+                    class="px-4 py-2 rounded-lg border border-warning text-warning text-sm hover:bg-warning hover:text-surface transition">
+                Refund
+            </button>
+        @endif
     </div>
 
     <div class="grid lg:grid-cols-2 gap-4 no-print">
@@ -132,6 +136,66 @@
         @endif
         <div class="text-center mt-3 border-t border-black pt-1.5">Terima kasih!</div>
         <div class="text-center">Sampai jumpa kembali ☕</div>
+    </div>
+
+    {{-- Void/Refund authorization modal --}}
+    <div x-show="authOpen" x-cloak x-transition
+         class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4"
+         @keydown.escape.window="authOpen=false">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl" @click.outside="authOpen=false">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="w-10 h-10 rounded-xl bg-warning/10 grid place-items-center text-lg">🔐</div>
+                <div>
+                    <h3 class="font-semibold" x-text="authAction==='void' ? 'Batalkan Transaksi?' : 'Refund?'"></h3>
+                    <p class="text-xs text-muted">{{ $transaction->transaction_number }}</p>
+                </div>
+            </div>
+
+            {{-- Step: request (no auth yet or already rejected/used/expired) --}}
+            <div x-show="authStep==='request'" class="mt-4 text-sm">
+                <p class="mb-3 text-muted">Permintaan void/refund harus disetujui MANAGER/ADMIN. Isi kode transaksi dan alasan, lalu tunggu kode OTP.</p>
+                <form method="POST" action="{{ route('transactions.authorize', $transaction) }}" class="space-y-3">
+                    @csrf
+                    <input type="hidden" name="action" :value="authAction">
+                    <input type="text" name="transaction_code" required placeholder="Kode transaksi: {{ $transaction->transaction_number }}"
+                           class="w-full rounded-lg border border-line px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <textarea name="reason" rows="2" required placeholder="Alasan (wajib)"
+                              class="w-full rounded-lg border border-line px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+                    <div x-show="authAction==='refund'">
+                        <input type="number" name="amount" min="1" max="{{ $transaction->grand_total }}" placeholder="Nominal refund (maks Rp{{ number_format($transaction->grand_total, 0, ',', '.') }})"
+                               class="w-full rounded-lg border border-line px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    </div>
+                    <button class="w-full py-3 rounded-lg bg-primary text-surface text-sm font-semibold hover:bg-black transition">Kirim Permintaan</button>
+                </form>
+            </div>
+
+            {{-- Step: waiting for approval --}}
+            <div x-show="authStep==='waiting'" class="mt-4 text-center text-sm text-muted py-6 space-y-2">
+                <div class="text-2xl">⏳</div>
+                <p>Permintaan sedang menunggu persetujuan MANAGER/ADMIN.<br>Setelah disetujui, kode OTP akan diminta di sini.</p>
+                <button @click="authOpen=false" class="mt-2 px-4 py-2 rounded-lg border border-line text-sm">Tutup</button>
+            </div>
+
+            {{-- Step: enter OTP from approver --}}
+            <div x-show="authStep==='otp'" class="mt-4 text-sm">
+                <p x-show="authAction==='void'" class="mb-3 text-muted">
+                    Disetujui. Alasan: <span class="font-medium text-ink">{{ $voidAuth?->reason }}</span>
+                </p>
+                <p x-show="authAction==='refund'" class="mb-3 text-muted">
+                    Disetujui. Nominal refund: <span class="font-medium text-ink">Rp{{ number_format($refundAuth?->amount ?? 0, 0, ',', '.') }}</span>
+                    <span class="block">Alasan: {{ $refundAuth?->reason }}</span>
+                </p>
+                <form method="POST"
+                      :action="authAction==='void' ? '{{ route('transactions.void', $transaction) }}' : '{{ route('transactions.refund', $transaction) }}'"
+                      class="space-y-3">
+                    @csrf
+                    <input type="text" name="otp" inputmode="numeric" maxlength="6" required autocomplete="one-time-code"
+                           placeholder="Kode OTP 6 digit"
+                           class="w-full rounded-lg border border-line px-3 py-2.5 text-center text-xl font-bold tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <button class="w-full py-3 rounded-lg bg-primary text-surface text-sm font-semibold hover:bg-black transition">Validasi &amp; Proses</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     {{-- Reprint confirmation modal --}}

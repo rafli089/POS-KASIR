@@ -61,4 +61,9 @@ class Transaction extends Model
     {
         return $this->hasOne(Receipt::class);
     }
+
+    public function authorizations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TransactionAuthorization::class);
+    }
 }

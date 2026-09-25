@@ -47,6 +47,8 @@ Route::middleware('auth.pin')->group(function () {
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
     Route::post('/transactions/{transaction}/reprint', [TransactionController::class, 'reprint'])->name('transactions.reprint');
+    Route::post('/transactions/{transaction}/authorize', [TransactionController::class, 'requestAuthorization'])->name('transactions.authorize');
+    Route::post('/transactions/{transaction}/approve', [TransactionController::class, 'approveAuthorization'])->name('transactions.approve');
 
     Route::middleware('role.admin')->group(function () {
         Route::resource('categories', CategoryController::class)->except(['show']);

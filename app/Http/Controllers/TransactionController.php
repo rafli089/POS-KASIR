@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\ShiftActivity;
 use App\Models\Transaction;
+use App\Models\TransactionAuthorization;
 use App\Models\TransactionItem;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -53,13 +54,19 @@ class TransactionController extends Controller
         $transaction->load(['items.product', 'paymentMethod', 'shift', 'user', 'receipt']);
 
         $shiftId = session('shift_id');
-        $canVoid = $transaction->status === Transaction::STATUS_COMPLETED
-            && $shiftId
-            && $transaction->shift_id === $shiftId;
+        $sameShift = $shiftId && $transaction->shift_id === $shiftId;
 
-        $canRefund = $canVoid && session('user_role') !== 'CASHIER';
+        $canVoid = $transaction->status === Transaction::STATUS_COMPLETED && $sameShift;
+        $canRefund = $transaction->status === Transaction::STATUS_COMPLETED && $sameShift;
 
-        return view('transactions.show', compact('transaction', 'canVoid', 'canRefund'));
+        $voidAuth = $transaction->authorizations()->where('action', TransactionAuthorization::ACTION_VOID)->latest()->first();
+        $refundAuth = $transaction->authorizations()->where('action', TransactionAuthorization::ACTION_REFUND)->latest()->first();
+        $pendingAuth = $transaction->authorizations()->where('status', TransactionAuthorization::STATUS_PENDING)->latest()->first();
+        $isApprover = in_array(session('user_role'), ['ADMIN', 'MANAGER']);
+
+        return view('transactions.show', compact(
+            'transaction', 'canVoid', 'canRefund', 'voidAuth', 'refundAuth', 'pendingAuth', 'isApprover'
+        ));
     }
 
     public function reprint(Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
@@ -87,26 +94,26 @@ class TransactionController extends Controller
             return back()->withErrors(['refund' => 'Refund hanya dapat dilakukan dalam shift yang sama.']);
         }
 
-        if (session('user_role') === 'CASHIER') {
-            return back()->withErrors(['refund' => 'Refund hanya bisa dilakukan oleh MANAGER atau ADMIN.']);
+        $auth = $this->consumeAuthorization($transaction, TransactionAuthorization::ACTION_REFUND, $request->input('otp'));
+
+        if (! $auth) {
+            return redirect()->route('transactions.show', $transaction)
+                ->withErrors(['refund' => 'Kode OTP tidak valid. Mintakan approval dari MANAGER/ADMIN terlebih dahulu.']);
         }
 
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'integer', 'min:1', 'max:' . $transaction->grand_total],
-        ]);
+        $amount = $auth->amount;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $validated) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $auth, $amount) {
             $transaction->update(['status' => Transaction::STATUS_REFUNDED]);
 
             ShiftActivity::create([
                 'shift_id' => $transaction->shift_id,
-                'user_id' => session('user_id'),
+                'user_id' => $auth->used_by,
                 'activity_type' => ShiftActivity::TYPE_TRANSACTION_REFUND,
                 'reference_type' => 'transaction',
                 'reference_id' => $transaction->id,
-                'reference_amount' => $validated['amount'],
-                'description' => "Refund #{$transaction->transaction_number} — {$validated['reason']}",
+                'reference_amount' => $amount,
+                'description' => "Refund #{$transaction->transaction_number} — {$auth->reason}",
             ]);
         });
 
@@ -126,13 +133,14 @@ class TransactionController extends Controller
             return back()->withErrors(['void' => 'Transaksi hanya dapat dibatalkan dalam shift yang sama.']);
         }
 
-        $userId = session('user_id');
+        $auth = $this->consumeAuthorization($transaction, TransactionAuthorization::ACTION_VOID, $request->input('otp'));
 
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'max:255'],
-        ]);
+        if (! $auth) {
+            return redirect()->route('transactions.show', $transaction)
+                ->withErrors(['void' => 'Kode OTP tidak valid. Mintakan approval dari MANAGER/ADMIN terlebih dahulu.']);
+        }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $userId, $validated) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction, $auth) {
             $transaction->update(['status' => Transaction::STATUS_VOID]);
 
             foreach ($transaction->items as $item) {
@@ -144,16 +152,114 @@ class TransactionController extends Controller
 
             ShiftActivity::create([
                 'shift_id' => $transaction->shift_id,
-                'user_id' => $userId,
+                'user_id' => $auth->used_by,
                 'activity_type' => ShiftActivity::TYPE_TRANSACTION_VOID,
                 'reference_type' => 'transaction',
                 'reference_id' => $transaction->id,
-                'description' => "Transaction #{$transaction->transaction_number} dibatalkan — {$validated['reason']}",
+                'description' => "Transaction #{$transaction->transaction_number} dibatalkan — {$auth->reason}",
             ]);
         });
 
         return redirect()->route('transactions.show', $transaction)
             ->with('success', 'Transaksi dibatalkan.');
+    }
+
+    public function requestAuthorization(\Illuminate\Http\Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
+    {
+        if ($transaction->status !== Transaction::STATUS_COMPLETED) {
+            return back()->withErrors(['authorize' => 'Transaksi ini sudah diproses.']);
+        }
+
+        if ($transaction->shift_id !== session('shift_id')) {
+            return back()->withErrors(['authorize' => 'Hanya transaksi dalam shift yang sama.']);
+        }
+
+        $validated = $request->validate([
+            'action' => ['required', 'in:VOID,REFUND'],
+            'transaction_code' => ['required', 'string'],
+            'reason' => ['required', 'string', 'max:255'],
+            'amount' => ['nullable', 'integer', 'min:1', 'max:' . $transaction->grand_total],
+        ]);
+
+        if ($validated['transaction_code'] !== $transaction->transaction_number) {
+            return back()->withErrors(['authorize' => 'Kode transaksi tidak sesuai.']);
+        }
+
+        if ($validated['action'] === TransactionAuthorization::ACTION_REFUND && empty($validated['amount'])) {
+            return back()->withErrors(['authorize' => 'Nominal refund wajib diisi.']);
+        }
+
+        $existing = $transaction->authorizations()
+            ->whereIn('status', [TransactionAuthorization::STATUS_PENDING, TransactionAuthorization::STATUS_APPROVED])
+            ->where('action', $validated['action'])
+            ->first();
+
+        if ($existing) {
+            return back()->withErrors(['authorize' => 'Permintaan untuk transaksi ini sudah ada.']);
+        }
+
+        TransactionAuthorization::create([
+            'transaction_id' => $transaction->id,
+            'requested_by' => session('user_id'),
+            'action' => $validated['action'],
+            'reason' => $validated['reason'],
+            'amount' => $validated['action'] === TransactionAuthorization::ACTION_REFUND ? (int) $validated['amount'] : null,
+            'status' => TransactionAuthorization::STATUS_PENDING,
+        ]);
+
+        return back()->with('success', 'Permintaan dikirim. Tunggu approval MANAGER/ADMIN untuk kode OTP.');
+    }
+
+    public function approveAuthorization(\Illuminate\Http\Request $request, Transaction $transaction): \Illuminate\Http\RedirectResponse
+    {
+        $auth = $transaction->authorizations()
+            ->where('status', TransactionAuthorization::STATUS_PENDING)
+            ->latest()
+            ->first();
+
+        if (! $auth) {
+            return back()->withErrors(['authorize' => 'Tidak ada permintaan pending untuk transaksi ini.']);
+        }
+
+        $otp = TransactionAuthorization::generateOtp();
+
+        $auth->update([
+            'status' => TransactionAuthorization::STATUS_APPROVED,
+            'otp_hash' => \Illuminate\Support\Facades\Hash::make($otp),
+            'otp_expires_at' => now()->addMinutes(TransactionAuthorization::OTP_TTL_MINUTES),
+            'approved_by' => session('user_id'),
+            'approved_at' => now(),
+        ]);
+
+        session()->flash('authorization_otp', $otp);
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', "Permintaan disetujui. Kode OTP untuk diinput kasir: {$otp} (berlaku " . TransactionAuthorization::OTP_TTL_MINUTES . ' menit).');
+    }
+
+    private function consumeAuthorization(Transaction $transaction, string $action, ?string $otp): ?TransactionAuthorization
+    {
+        if (! $otp) {
+            return null;
+        }
+
+        $auth = $transaction->authorizations()
+            ->where('action', $action)
+            ->where('status', TransactionAuthorization::STATUS_APPROVED)
+            ->orderByDesc('approved_at')
+            ->first();
+
+        if (! $auth || ! $auth->isValid() || ! \Illuminate\Support\Facades\Hash::check($otp, $auth->otp_hash)) {
+            return null;
+        }
+
+        $auth->update([
+            'status' => TransactionAuthorization::STATUS_USED,
+            'used_by' => session('user_id'),
+            'used_at' => now(),
+        ]);
+
+        return $auth;
     }
 
     public function store(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
